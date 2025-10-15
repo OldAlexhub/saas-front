@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import AppLayout from '../../components/AppLayout';
+import { listActives } from '../../services/activeService';
 import {
   assignBooking,
   cancelBooking,
@@ -31,6 +32,7 @@ const BookingDetail = () => {
   const [statusForm, setStatusForm] = useState({ toStatus: '', reason: '', fee: '' });
   const [drivers, setDrivers] = useState([]);
   const [vehicles, setVehicles] = useState([]);
+  const [actives, setActives] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -41,18 +43,42 @@ const BookingDetail = () => {
       setLoading(true);
       setError('');
       try {
-        const [bookingRes, driversRes, vehiclesRes] = await Promise.all([
+        const [bookingRes, driversRes, vehiclesRes, activesRes] = await Promise.all([
           getBooking(id),
           listDrivers(),
           listVehicles(),
+          listActives(),
         ]);
         const bookingData = bookingRes.data?.booking || bookingRes.data?.data || bookingRes.data;
         const driverList =
           driversRes.data?.drivers || driversRes.data?.results || driversRes.data || [];
         const vehicleList =
           vehiclesRes.data?.vehicles || vehiclesRes.data?.results || vehiclesRes.data || [];
+        const activeList =
+          activesRes.data?.data || activesRes.data?.actives || activesRes.data || [];
+        const normalizedActives = Array.isArray(activeList) ? activeList : [];
 
         setBooking(bookingData);
+        setActives(normalizedActives);
+
+        const rawDriverId =
+          bookingData?.driverId ??
+          bookingData?.driver?._id ??
+          bookingData?.driver?._id?.toString?.();
+        const initialDriverId = rawDriverId ? String(rawDriverId) : '';
+        let initialCabNumber = bookingData?.cabNumber ?? bookingData?.assignedCab ?? '';
+        if (initialCabNumber !== null && initialCabNumber !== undefined && initialCabNumber !== '') {
+          initialCabNumber = String(initialCabNumber);
+        } else {
+          initialCabNumber = '';
+        }
+        const activeMatch = normalizedActives.find((active) => {
+          const candidate = active?.driverId ?? active?._id;
+          return candidate != null && String(candidate) === initialDriverId;
+        });
+        if (!initialCabNumber && activeMatch?.cabNumber) {
+          initialCabNumber = String(activeMatch.cabNumber);
+        }
         setForm({
           customerName: bookingData?.customerName || '',
           phoneNumber: bookingData?.phoneNumber || '',
@@ -63,8 +89,8 @@ const BookingDetail = () => {
           fare: bookingData?.fare?.toString() || '',
         });
         setAssignment({
-          driverId: bookingData?.driverId || bookingData?.driver?._id || '',
-          cabNumber: bookingData?.cabNumber || bookingData?.assignedCab || '',
+          driverId: initialDriverId,
+          cabNumber: initialCabNumber,
         });
         setStatusForm({ toStatus: bookingData?.status || 'Scheduled', reason: '', fee: '' });
         setDrivers(Array.isArray(driverList) ? driverList : []);
@@ -80,22 +106,70 @@ const BookingDetail = () => {
     fetchData();
   }, [id]);
 
-  const driverOptions = useMemo(
-    () =>
-      drivers.map((driver) => ({
-        value: driver._id || driver.id,
-        label: `${driver.firstName || ''} ${driver.lastName || ''}`.trim() || driver.email || 'Unnamed driver',
-      })),
-    [drivers],
-  );
+  const driverOptions = useMemo(() => {
+    const seen = new Set();
+    const options = [];
 
-  const vehicleOptions = useMemo(
-    () =>
-      vehicles.map((vehicle) => ({
-        value: vehicle.cabNumber || vehicle._id,
-        label: `Cab ${vehicle.cabNumber || vehicle._id?.slice(-4) || ''}`.trim(),
-      })),
-    [vehicles],
+    actives.forEach((active) => {
+      const value = active?.driverId ?? active?._id;
+      const normalizedValue = value != null ? String(value) : '';
+      if (!normalizedValue || seen.has(normalizedValue)) return;
+      seen.add(normalizedValue);
+      const name = `${active?.firstName || ''} ${active?.lastName || ''}`.trim() || normalizedValue || 'Active driver';
+      const detailParts = [];
+      if (active?.cabNumber) detailParts.push(`Cab ${active.cabNumber}`);
+      if (active?.availability) detailParts.push(active.availability);
+      const label = detailParts.length ? `${name} · ${detailParts.join(' · ')}` : name;
+      options.push({ value: normalizedValue, label });
+    });
+
+    drivers.forEach((driver) => {
+      const value = driver?._id ?? driver?.id;
+      const normalizedValue = value != null ? String(value) : '';
+      if (!normalizedValue || seen.has(normalizedValue)) return;
+      seen.add(normalizedValue);
+      const label = `${driver?.firstName || ''} ${driver?.lastName || ''}`.trim() || driver?.email || 'Unnamed driver';
+      options.push({ value: normalizedValue, label });
+    });
+
+    return options;
+  }, [actives, drivers]);
+
+  const vehicleOptions = useMemo(() => {
+    const map = new Map();
+
+    vehicles.forEach((vehicle) => {
+      const rawValue = vehicle?.cabNumber ?? vehicle?._id;
+      const value = rawValue != null ? String(rawValue) : '';
+      if (!value) return;
+      const label = `Cab ${vehicle?.cabNumber || vehicle?._id?.slice?.(-4) || ''}`.trim();
+      map.set(value, label);
+    });
+
+    actives.forEach((active) => {
+      if (!active?.cabNumber) return;
+      const value = String(active.cabNumber);
+      if (map.has(value)) return;
+      const descriptors = [active?.make, active?.model, active?.color].filter(Boolean).join(' ');
+      const label = descriptors
+        ? `Cab ${active.cabNumber} (${descriptors})`
+        : `Cab ${active.cabNumber}`;
+      map.set(value, label);
+    });
+
+    return Array.from(map.entries()).map(([value, label]) => ({ value, label }));
+  }, [vehicles, actives]);
+
+  const selectedActive = useMemo(
+    () => {
+      const normalized = assignment.driverId ? String(assignment.driverId) : '';
+      if (!normalized) return undefined;
+      return actives.find((active) => {
+        const candidate = active?.driverId ?? active?._id;
+        return candidate != null && String(candidate) === normalized;
+      });
+    },
+    [actives, assignment.driverId],
   );
 
   const handleFormChange = (event) => {
@@ -105,7 +179,21 @@ const BookingDetail = () => {
 
   const handleAssignmentChange = (event) => {
     const { name, value } = event.target;
-    setAssignment((prev) => ({ ...prev, [name]: value }));
+    if (name === 'driverId') {
+      setAssignment((prev) => {
+        const next = { ...prev, [name]: value };
+        const match = actives.find((active) => {
+          const candidate = active?.driverId ?? active?._id;
+          return candidate != null && String(candidate) === value;
+        });
+        if (match?.cabNumber) {
+          next.cabNumber = String(match.cabNumber);
+        }
+        return next;
+      });
+    } else {
+      setAssignment((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleStatusChange = (event) => {
@@ -406,6 +494,74 @@ const BookingDetail = () => {
                               ))}
                             </select>
                           </div>
+                          {selectedActive && (
+                            <div className="full-width" style={{ marginTop: '4px' }}>
+                              <div
+                                style={{
+                                  border: '1px solid var(--surface-border)',
+                                  borderRadius: '16px',
+                                  padding: '16px',
+                                  background: 'var(--surface-highlight)',
+                                }}
+                              >
+                                <h4 style={{ margin: '0 0 12px' }}>Active driver snapshot</h4>
+                                <dl className="meta-grid">
+                                  <div>
+                                    <dt>Cab</dt>
+                                    <dd>{selectedActive.cabNumber || '—'}</dd>
+                                  </div>
+                                  <div>
+                                    <dt>Plates</dt>
+                                    <dd>{selectedActive.licPlates || '—'}</dd>
+                                  </div>
+                                  <div>
+                                    <dt>Vehicle</dt>
+                                    <dd>
+                                      {[selectedActive.make, selectedActive.model, selectedActive.color]
+                                        .filter(Boolean)
+                                        .join(' ') || '—'}
+                                    </dd>
+                                  </div>
+                                  <div>
+                                    <dt>Status</dt>
+                                    <dd>
+                                      {[selectedActive.status, selectedActive.availability]
+                                        .filter(Boolean)
+                                        .join(' · ') || '—'}
+                                    </dd>
+                                  </div>
+                                  <div>
+                                    <dt>Location</dt>
+                                    <dd>
+                                      {(() => {
+                                        const coords = Array.isArray(selectedActive?.currentLocation?.coordinates)
+                                          ? selectedActive.currentLocation.coordinates
+                                          : [];
+                                        const [lng, lat] = coords;
+                                        const hasCoords =
+                                          Number.isFinite(lat) && Number.isFinite(lng);
+                                        const formatted = hasCoords
+                                          ? `${lat.toFixed(5)}, ${lng.toFixed(5)}`
+                                          : '—';
+                                        const updated = selectedActive?.currentLocation?.updatedAt
+                                          ? new Date(selectedActive.currentLocation.updatedAt).toLocaleString()
+                                          : null;
+                                        return updated ? `${formatted} (updated ${updated})` : formatted;
+                                      })()}
+                                    </dd>
+                                  </div>
+                                  <div>
+                                    <dt>HOS (driving today)</dt>
+                                    <dd>
+                                      {Number.isFinite(selectedActive?.hoursOfService?.drivingMinutesToday)
+                                        ? `${selectedActive.hoursOfService.drivingMinutesToday} min`
+                                        : '—'}
+                                    </dd>
+                                  </div>
+                                </dl>
+                              </div>
+                            </div>
+                          )}
                           <div>
                             <label htmlFor="cabNumber">Cab number</label>
                             <select

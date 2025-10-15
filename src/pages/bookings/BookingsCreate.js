@@ -1,8 +1,7 @@
 import axios from 'axios';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet';
-import { Link, useNavigate } from 'react-router-dom';
-import AppLayout from '../../components/AppLayout';
+import { useState } from 'react';
+import { MapContainer, Marker, Popup, TileLayer, useMapEvents } from 'react-leaflet';
+import { useNavigate } from 'react-router-dom';
 import { createBooking } from '../../services/bookingService';
 
 /**
