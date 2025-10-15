@@ -48,15 +48,47 @@ const BookingsCreate = () => {
     return defaultCenter;
   }, [defaultCenter, dropoffPosition, pickupPosition]);
 
+  const formatLatLng = useCallback(
+    (value) => (Number.isFinite(value) ? Number(value).toFixed(6) : ''),
+    [],
+  );
+
+  const normalizePair = useCallback((lat, lng) => {
+    const toNumber = (input) => {
+      if (input === null || input === undefined) return Number.NaN;
+      if (typeof input === 'number') return input;
+      const trimmed = String(input).trim();
+      if (trimmed === '') return Number.NaN;
+      return Number(trimmed);
+    };
+
+    const latNum = toNumber(lat);
+    const lngNum = toNumber(lng);
+
+    if (Number.isFinite(latNum) && Number.isFinite(lngNum)) {
+      return { lat: latNum, lng: lngNum };
+    }
+
+    return { lat: undefined, lng: undefined };
+  }, []);
+
   const assignCoordinates = useCallback((kind, latLng) => {
     if (kind === 'pickup') {
       setPickupPosition(latLng);
-      setForm((prev) => ({ ...prev, pickupLat: latLng.lat, pickupLng: latLng.lng }));
+      setForm((prev) => ({
+        ...prev,
+        pickupLat: formatLatLng(latLng.lat),
+        pickupLng: formatLatLng(latLng.lng),
+      }));
     } else {
       setDropoffPosition(latLng);
-      setForm((prev) => ({ ...prev, dropoffLat: latLng.lat, dropoffLng: latLng.lng }));
+      setForm((prev) => ({
+        ...prev,
+        dropoffLat: formatLatLng(latLng.lat),
+        dropoffLng: formatLatLng(latLng.lng),
+      }));
     }
-  }, []);
+  }, [formatLatLng]);
 
   // Marker component to set pickup location on map click
   function LocationMarker() {
@@ -105,44 +137,58 @@ const BookingsCreate = () => {
     setForm((prev) => ({ ...prev, [name]: checked }));
   };
 
-  const resolveCoordinates = useCallback(async (label, lat, lng, address) => {
-    if (lat && lng) {
-      return { lat: Number(lat), lng: Number(lng) };
-    }
-
-    if (!address) {
-      return { lat: undefined, lng: undefined };
-    }
-
-    try {
-      const geoRes = await axios.get('https://nominatim.openstreetmap.org/search', {
-        params: {
-          q: address,
-          format: 'json',
-          limit: 1,
-        },
-        headers: {
-          'Accept-Language': 'en',
-        },
-      });
-      if (Array.isArray(geoRes.data) && geoRes.data.length > 0) {
-        const { lat: gLat, lon: gLon } = geoRes.data[0];
-        const parsed = { lat: parseFloat(gLat), lng: parseFloat(gLon) };
-        if (label === 'pickup') {
-          setPickupPosition(parsed);
-          setForm((prev) => ({ ...prev, pickupLat: parsed.lat, pickupLng: parsed.lng }));
-        } else {
-          setDropoffPosition(parsed);
-          setForm((prev) => ({ ...prev, dropoffLat: parsed.lat, dropoffLng: parsed.lng }));
-        }
-        return parsed;
+  const resolveCoordinates = useCallback(
+    async (label, lat, lng, address) => {
+      const manual = normalizePair(lat, lng);
+      if (Number.isFinite(manual.lat) && Number.isFinite(manual.lng)) {
+        return manual;
       }
-    } catch (geoErr) {
-      console.warn(`Geocoding ${label} failed:`, geoErr.message);
-    }
 
-    return { lat: undefined, lng: undefined };
-  }, []);
+      if (!address) {
+        return { lat: undefined, lng: undefined };
+      }
+
+      try {
+        const geoRes = await axios.get('https://nominatim.openstreetmap.org/search', {
+          params: {
+            q: address,
+            format: 'json',
+            limit: 1,
+          },
+          headers: {
+            'Accept-Language': 'en',
+          },
+        });
+        if (Array.isArray(geoRes.data) && geoRes.data.length > 0) {
+          const { lat: gLat, lon: gLon } = geoRes.data[0];
+          const parsed = normalizePair(parseFloat(gLat), parseFloat(gLon));
+          if (Number.isFinite(parsed.lat) && Number.isFinite(parsed.lng)) {
+            if (label === 'pickup') {
+              setPickupPosition(parsed);
+              setForm((prev) => ({
+                ...prev,
+                pickupLat: formatLatLng(parsed.lat),
+                pickupLng: formatLatLng(parsed.lng),
+              }));
+            } else {
+              setDropoffPosition(parsed);
+              setForm((prev) => ({
+                ...prev,
+                dropoffLat: formatLatLng(parsed.lat),
+                dropoffLng: formatLatLng(parsed.lng),
+              }));
+            }
+            return parsed;
+          }
+        }
+      } catch (geoErr) {
+        console.warn(`Geocoding ${label} failed:`, geoErr.message);
+      }
+
+      return { lat: undefined, lng: undefined };
+    },
+    [formatLatLng, normalizePair],
+  );
 
   const handleLocate = useCallback(
     async (kind) => {
@@ -156,8 +202,7 @@ const BookingsCreate = () => {
   );
 
   useEffect(() => {
-    const lat = parseFloat(form.pickupLat);
-    const lng = parseFloat(form.pickupLng);
+    const { lat, lng } = normalizePair(form.pickupLat, form.pickupLng);
     setPickupPosition((prev) => {
       if (Number.isFinite(lat) && Number.isFinite(lng)) {
         if (prev && prev.lat === lat && prev.lng === lng) {
@@ -167,11 +212,10 @@ const BookingsCreate = () => {
       }
       return null;
     });
-  }, [form.pickupLat, form.pickupLng]);
+  }, [form.pickupLat, form.pickupLng, normalizePair]);
 
   useEffect(() => {
-    const lat = parseFloat(form.dropoffLat);
-    const lng = parseFloat(form.dropoffLng);
+    const { lat, lng } = normalizePair(form.dropoffLat, form.dropoffLng);
     setDropoffPosition((prev) => {
       if (Number.isFinite(lat) && Number.isFinite(lng)) {
         if (prev && prev.lat === lat && prev.lng === lng) {
@@ -181,7 +225,7 @@ const BookingsCreate = () => {
       }
       return null;
     });
-  }, [form.dropoffLat, form.dropoffLng]);
+  }, [form.dropoffLat, form.dropoffLng, normalizePair]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -219,12 +263,12 @@ const BookingsCreate = () => {
       };
       payload.pickupPoint = {
         type: 'Point',
-        coordinates: [Number(pLng), Number(pLat)],
+        coordinates: [Number(pLng.toFixed(6)), Number(pLat.toFixed(6))],
       };
 
       payload.dropoffPoint = {
         type: 'Point',
-        coordinates: [Number(dLng), Number(dLat)],
+        coordinates: [Number(dLng.toFixed(6)), Number(dLat.toFixed(6))],
       };
 
       await createBooking(payload);
@@ -400,42 +444,6 @@ const BookingsCreate = () => {
                       />
                     </div>
                   </div>
-                </div>
-                <div>
-                  <label htmlFor="dispatchMethod">Dispatch method</label>
-                  <select
-                    id="dispatchMethod"
-                    name="dispatchMethod"
-                    value={form.dispatchMethod}
-                    onChange={handleChange}
-                  >
-                    <option value="manual">Manual</option>
-                    <option value="auto">Auto assign</option>
-                  </select>
-                </div>
-                <div className="checkbox-field">
-                  <label htmlFor="wheelchairNeeded">
-                    <input
-                      id="wheelchairNeeded"
-                      type="checkbox"
-                      name="wheelchairNeeded"
-                      checked={form.wheelchairNeeded}
-                      onChange={handleCheckboxChange}
-                    />
-                    Wheelchair accessible vehicle required
-                  </label>
-                </div>
-                <div className="checkbox-field">
-                  <label htmlFor="noShowFeeApplied">
-                    <input
-                      id="noShowFeeApplied"
-                      type="checkbox"
-                      name="noShowFeeApplied"
-                      checked={form.noShowFeeApplied}
-                      onChange={handleCheckboxChange}
-                    />
-                    Apply no-show fee if rider cancels late
-                  </label>
                 </div>
                 <div>
                   <label htmlFor="dispatchMethod">Dispatch method</label>

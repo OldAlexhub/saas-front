@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AppLayout from '../../components/AppLayout';
 import { listActives, updateAvailability, updateStatus } from '../../services/activeService';
@@ -16,8 +16,13 @@ const ActivesList = () => {
     setError('');
     try {
       const res = await listActives();
-      const data = res.data?.actives || res.data?.results || res.data || [];
-      setActives(Array.isArray(data) ? data : []);
+      const payload =
+        res.data?.data ||
+        res.data?.actives ||
+        res.data?.results ||
+        res.data ||
+        [];
+      setActives(Array.isArray(payload) ? payload : []);
     } catch (err) {
       const msg = err.response?.data?.message || 'Failed to fetch actives';
       setError(msg);
