@@ -87,6 +87,7 @@ const BookingsCreate = () => {
   function MapAutoCenter() {
     const map = useMap();
     useEffect(() => {
+      if (!activeMarkerPosition) return;
       map.setView(activeMarkerPosition, map.getZoom());
     }, [activeMarkerPosition, map]);
     return null;
