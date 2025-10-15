@@ -545,6 +545,13 @@ a:hover {
   color: inherit;
 }
 
+.btn-inline {
+  margin-top: 10px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  align-self: flex-start;
+}
+
 .btn span.icon {
   display: inline-flex;
   align-items: center;
@@ -662,6 +669,12 @@ a:hover {
   gap: 18px 20px;
 }
 
+.form-grid.mini {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
 .form-grid.two-column {
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
 }
@@ -695,6 +708,11 @@ a:hover {
   font-size: 0.9rem;
 }
 
+.form-grid.mini label {
+  font-size: 0.8rem;
+  margin-bottom: 6px;
+}
+
 .form-grid input,
 .form-grid textarea,
 .form-grid select {
@@ -705,6 +723,11 @@ a:hover {
   background: rgba(15, 23, 42, 0.6);
   color: var(--text-primary);
   outline: none;
+}
+
+.form-grid.mini input {
+  padding: 10px 12px;
+  font-size: 0.85rem;
 }
 
 .form-grid input:focus,
@@ -748,6 +771,63 @@ a:hover {
   padding: 12px 0 0;
   color: var(--text-muted);
   text-align: center;
+}
+
+.map-toggle {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  padding: 14px 16px 6px;
+}
+
+.map-toggle .btn {
+  min-width: 160px;
+  border-radius: 999px;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.map-toggle .btn.active,
+.map-toggle .btn:hover {
+  background: rgba(96, 165, 250, 0.18);
+  color: #fff;
+}
+
+.map-coordinates {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  padding: 0 18px 12px;
+  color: var(--text-muted);
+}
+
+.map-coordinates strong {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.checkbox-field label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-secondary);
+}
+
+.checkbox-field input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent-primary);
 }
 
 .auth-layout {
