@@ -1,22 +1,40 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import NavBar from '../../components/NavBar';
+import AppLayout from '../../components/AppLayout';
 import { listVehicles } from '../../services/vehicleService';
 
-/**
- * Lists all vehicles in a table with basic details. Provides a link to add a
- * new vehicle. Fetches data on mount.
- */
+const formatDate = (value) => {
+  if (!value) return '—';
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? '—' : parsed.toLocaleDateString();
+};
+
+const registrationBadge = (value) => {
+  if (!value) return <span className="badge badge-warning">Missing</span>;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return <span className="badge badge-warning">Invalid</span>;
+  }
+  const diff = (parsed - new Date()) / (1000 * 60 * 60 * 24);
+  if (diff < 0) return <span className="badge badge-warning">Expired</span>;
+  if (diff < 30) return <span className="badge badge-warning">Renew soon</span>;
+  return <span className="badge badge-success">Clear</span>;
+};
+
 const VehiclesList = () => {
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     const fetchVehicles = async () => {
+      setLoading(true);
+      setError('');
       try {
         const res = await listVehicles();
-        setVehicles(res.data.vehicles || res.data.list || res.data || []);
+        const items = res.data?.vehicles || res.data?.list || res.data || [];
+        setVehicles(Array.isArray(items) ? items : []);
       } catch (err) {
         const msg = err.response?.data?.message || 'Failed to fetch vehicles';
         setError(msg);
@@ -27,54 +45,110 @@ const VehiclesList = () => {
     fetchVehicles();
   }, []);
 
+  const filteredVehicles = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return vehicles;
+    return vehicles.filter((vehicle) => {
+      const target = [
+        vehicle.cabNumber,
+        vehicle.vinNumber,
+        vehicle.licPlates,
+        vehicle.make,
+        vehicle.model,
+        vehicle.color,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return target.includes(query);
+    });
+  }, [vehicles, search]);
+
+  const actions = (
+    <Link to="/vehicles/new" className="btn btn-primary">
+      <span className="icon">＋</span>
+      Add vehicle
+    </Link>
+  );
+
+  const renderBody = () => {
+    if (loading) {
+      return <div className="skeleton" style={{ height: '260px' }} />;
+    }
+    if (error) {
+      return <div className="feedback error">{error}</div>;
+    }
+    if (!filteredVehicles.length) {
+      return <div className="empty-state">No vehicles match this filter yet.</div>;
+    }
+
+    return (
+      <table className="data-table">
+        <thead>
+          <tr>
+            <th>Cab</th>
+            <th>Registration</th>
+            <th>Make & model</th>
+            <th>Identifiers</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filteredVehicles.map((vehicle) => (
+            <tr key={vehicle._id}>
+              <td>
+                <div className="table-stack">
+                  <span className="primary">Cab #{vehicle.cabNumber || '—'}</span>
+                  <span className="secondary">Year {vehicle.year || '—'} • {vehicle.color || 'No color set'}</span>
+                </div>
+              </td>
+              <td>
+                <div className="table-stack">
+                  <span className="primary">{registrationBadge(vehicle.regisExpiry)}</span>
+                  <span className="secondary">Expires {formatDate(vehicle.regisExpiry)}</span>
+                </div>
+              </td>
+              <td>
+                <div className="table-stack">
+                  <span className="primary">{vehicle.make || '—'} {vehicle.model || ''}</span>
+                  <span className="secondary">Annual inspection: {formatDate(vehicle.annualInspection)}</span>
+                </div>
+              </td>
+              <td>
+                <div className="table-stack">
+                  <span className="primary">Plate: {vehicle.licPlates || '—'}</span>
+                  <span className="secondary">VIN: {vehicle.vinNumber || '—'}</span>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    );
+  };
+
   return (
-    <div>
-      <NavBar />
-      <div className="container mt-4">
-        <h2 className="mb-3">Vehicles</h2>
-        <Link to="/vehicles/new" className="btn btn-primary mb-3">Add Vehicle</Link>
-        {loading ? (
-          <p>Loading...</p>
-        ) : error ? (
-          <p className="text-danger">{error}</p>
-        ) : Array.isArray(vehicles) && vehicles.length ? (
-          <table className="table table-striped table-bordered">
-            <thead>
-              <tr>
-                <th>Cab #</th>
-                <th>VIN</th>
-                <th>Plate</th>
-                <th>Make</th>
-                <th>Model</th>
-                <th>Year</th>
-                <th>Color</th>
-                <th>Regis Expiry</th>
-              </tr>
-            </thead>
-            <tbody>
-              {vehicles.map((veh) => (
-                <tr key={veh._id}>
-                  <td>{veh.cabNumber}</td>
-                  <td>{veh.vinNumber}</td>
-                  <td>{veh.licPlates}</td>
-                  <td>{veh.make}</td>
-                  <td>{veh.model}</td>
-                  <td>{veh.year}</td>
-                  <td>{veh.color}</td>
-                  <td>{veh.regisExpiry ? new Date(veh.regisExpiry).toLocaleDateString() : ''}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <p>No vehicles found.</p>
-        )}
+    <AppLayout
+      title="Fleet overview"
+      subtitle="Keep every vehicle compliant and road ready with quick access to critical data."
+      actions={actions}
+    >
+      <div className="surface">
+        <div className="toolbar">
+          <div className="search-input">
+            <span className="icon">🔍</span>
+            <input
+              type="search"
+              placeholder="Search by cab number, VIN, plate, make or model"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <div className="summary">{filteredVehicles.length} of {vehicles.length} vehicles listed</div>
+        </div>
+        {renderBody()}
       </div>
-    </div>
+    </AppLayout>
   );
 };
-
-// Styles object is unused since Bootstrap classes handle styling
-const styles = {};
 
 export default VehiclesList;

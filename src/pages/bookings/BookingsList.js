@@ -1,27 +1,25 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import NavBar from '../../components/NavBar';
+import AppLayout from '../../components/AppLayout';
 import { listBookings } from '../../services/bookingService';
 
-/**
- * Displays a list of bookings with minimal details. Users can navigate to add
- * new bookings. Fetches bookings on mount.
- */
+const statusOptions = ['All', 'Scheduled', 'Assigned', 'Completed', 'Cancelled'];
+
 const BookingsList = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('All');
 
   useEffect(() => {
     const fetchBookings = async () => {
+      setLoading(true);
+      setError('');
       try {
         const res = await listBookings();
-        // API returns an object { bookings: [...], count: n } so handle accordingly
-        if (Array.isArray(res.data.bookings)) {
-          setBookings(res.data.bookings);
-        } else if (Array.isArray(res.data)) {
-          setBookings(res.data);
-        }
+        const items = res.data?.bookings || res.data?.results || res.data || [];
+        setBookings(Array.isArray(items) ? items : []);
       } catch (err) {
         const msg = err.response?.data?.message || 'Failed to fetch bookings';
         setError(msg);
@@ -29,51 +27,128 @@ const BookingsList = () => {
         setLoading(false);
       }
     };
+
     fetchBookings();
   }, []);
 
+  const filteredBookings = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return bookings.filter((booking) => {
+      const matchesStatus = status === 'All' || booking.status === status;
+      if (!matchesStatus) return false;
+      if (!query) return true;
+      const target = [
+        booking.customerName,
+        booking.phoneNumber,
+        booking.bookingId,
+        booking.cabNumber,
+        booking.status,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return target.includes(query);
+    });
+  }, [bookings, search, status]);
+
+  const actions = (
+    <Link to="/bookings/new" className="btn btn-primary">
+      <span className="icon">＋</span>
+      New booking
+    </Link>
+  );
+
+  const renderBody = () => {
+    if (loading) {
+      return <div className="skeleton" style={{ height: '260px' }} />;
+    }
+    if (error) {
+      return <div className="feedback error">{error}</div>;
+    }
+    if (!filteredBookings.length) {
+      return <div className="empty-state">No bookings match your filters yet.</div>;
+    }
+
+    return (
+      <table className="data-table">
+        <thead>
+          <tr>
+            <th>Booking</th>
+            <th>Customer</th>
+            <th>Pickup</th>
+            <th>Status</th>
+            <th>Assignment</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filteredBookings.map((booking) => (
+            <tr key={booking._id || booking.bookingId}>
+              <td>
+                <div className="table-stack">
+                  <span className="primary">#{booking.bookingId || booking._id?.slice(-6)}</span>
+                  <span className="secondary">Created {booking.createdAt ? new Date(booking.createdAt).toLocaleString() : '—'}</span>
+                </div>
+              </td>
+              <td>
+                <div className="table-stack">
+                  <span className="primary">{booking.customerName || '—'}</span>
+                  <span className="secondary">{booking.phoneNumber || 'No phone on file'}</span>
+                </div>
+              </td>
+              <td>
+                <div className="table-stack">
+                  <span className="primary">{booking.pickupTime ? new Date(booking.pickupTime).toLocaleString() : '—'}</span>
+                  <span className="secondary">Pickup: {booking.pickupAddress || 'TBD'}</span>
+                </div>
+              </td>
+              <td>
+                <span className={`badge ${booking.status === 'Completed' ? 'badge-success' : booking.status === 'Cancelled' ? 'badge-warning' : 'badge-info'}`}>
+                  {booking.status || 'Scheduled'}
+                </span>
+              </td>
+              <td>
+                <div className="table-stack">
+                  <span className="primary">Driver: {booking.driverName || booking.driverId || 'Unassigned'}</span>
+                  <span className="secondary">Cab #{booking.cabNumber || booking.assignedCab || '—'}</span>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    );
+  };
+
   return (
-    <div>
-      <NavBar />
-      <div className="container mt-4">
-        <h2 className="mb-3">Bookings</h2>
-        <Link to="/bookings/new" className="btn btn-primary mb-3">Add Booking</Link>
-        {loading ? (
-          <p>Loading...</p>
-        ) : error ? (
-          <p className="text-danger">{error}</p>
-        ) : bookings && bookings.length ? (
-          <table className="table table-striped table-bordered">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Customer</th>
-                <th>Phone</th>
-                <th>Pickup Time</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {bookings.map((b) => (
-                <tr key={b._id}>
-                  <td>{b.bookingId || b._id}</td>
-                  <td>{b.customerName}</td>
-                  <td>{b.phoneNumber}</td>
-                  <td>{b.pickupTime ? new Date(b.pickupTime).toLocaleString() : ''}</td>
-                  <td>{b.status}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <p>No bookings found.</p>
-        )}
+    <AppLayout
+      title="Booking pipeline"
+      subtitle="Track every reservation, from scheduled pickups to completed trips."
+      actions={actions}
+    >
+      <div className="surface">
+        <div className="toolbar">
+          <div className="search-input">
+            <span className="icon">🔍</span>
+            <input
+              type="search"
+              placeholder="Search by customer, phone, cab or status"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <select className="filter-select" value={status} onChange={(e) => setStatus(e.target.value)}>
+            {statusOptions.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+          <div className="summary">{filteredBookings.length} of {bookings.length} bookings</div>
+        </div>
+        {renderBody()}
       </div>
-    </div>
+    </AppLayout>
   );
 };
-
-// Styles object unused due to Bootstrap classes
-const styles = {};
 
 export default BookingsList;

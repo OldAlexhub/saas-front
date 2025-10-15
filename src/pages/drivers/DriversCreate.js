@@ -1,13 +1,8 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import NavBar from '../../components/NavBar';
+import { Link, useNavigate } from 'react-router-dom';
+import AppLayout from '../../components/AppLayout';
 import { addDriver } from '../../services/driverService';
 
-/**
- * Form for creating a new driver. Captures all required fields defined in the
- * backend and submits them to the API. On success it redirects back to
- * the drivers list. Validation errors returned from the server are displayed.
- */
 const DriversCreate = () => {
   const navigate = useNavigate();
   const [form, setForm] = useState({
@@ -48,168 +43,193 @@ const DriversCreate = () => {
     }
   };
 
+  const actions = (
+    <Link to="/drivers" className="btn btn-ghost">
+      Back to list
+    </Link>
+  );
+
   return (
-    <div>
-      <NavBar />
-      <div className="container mt-4">
-        <h2 className="mb-3">Add Driver</h2>
+    <AppLayout
+      title="Add a new driver"
+      subtitle="Capture identification, compliance and contact details in one pass."
+      actions={actions}
+    >
+      <div className="surface">
         <form onSubmit={handleSubmit}>
-          <div className="row">
-            <div className="col-md-6 mb-3">
-              <label className="form-label">First Name</label>
-              <input
-                type="text"
-                className="form-control"
-                name="firstName"
-                value={form.firstName}
-                onChange={handleChange}
-                required
-              />
+          <div className="form-section">
+            <div>
+              <h3>Profile</h3>
+              <p>Who is joining your fleet? Start with their basic details.</p>
             </div>
-            <div className="col-md-6 mb-3">
-              <label className="form-label">Last Name</label>
-              <input
-                type="text"
-                className="form-control"
-                name="lastName"
-                value={form.lastName}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div className="col-md-6 mb-3">
-              <label className="form-label">License Number</label>
-              <input
-                type="text"
-                className="form-control"
-                name="dlNumber"
-                value={form.dlNumber}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div className="col-md-6 mb-3">
-              <label className="form-label">Email</label>
-              <input
-                type="email"
-                className="form-control"
-                name="email"
-                value={form.email}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div className="col-md-6 mb-3">
-              <label className="form-label">Date of Birth</label>
-              <input
-                type="date"
-                className="form-control"
-                name="dob"
-                value={form.dob}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div className="col-md-6 mb-3">
-              <label className="form-label">DL Expiry</label>
-              <input
-                type="date"
-                className="form-control"
-                name="dlExpiry"
-                value={form.dlExpiry}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div className="col-md-6 mb-3">
-              <label className="form-label">DOT Expiry</label>
-              <input
-                type="date"
-                className="form-control"
-                name="dotExpiry"
-                value={form.dotExpiry}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div className="col-md-6 mb-3">
-              <label className="form-label">Full Address</label>
-              <input
-                type="text"
-                className="form-control"
-                name="fullAddress"
-                value={form.fullAddress}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div className="col-md-6 mb-3">
-              <label className="form-label">SSN</label>
-              <input
-                type="text"
-                className="form-control"
-                name="ssn"
-                value={form.ssn}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div className="col-md-6 mb-3">
-              <label className="form-label">Phone Number</label>
-              <input
-                type="text"
-                className="form-control"
-                name="phoneNumber"
-                value={form.phoneNumber}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div className="col-md-4 mb-3">
-              <label className="form-label">CBI Expiry</label>
-              <input
-                type="date"
-                className="form-control"
-                name="cbiExpiry"
-                value={form.cbiExpiry}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div className="col-md-4 mb-3">
-              <label className="form-label">MVR Expiry</label>
-              <input
-                type="date"
-                className="form-control"
-                name="mvrExpiry"
-                value={form.mvrExpiry}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div className="col-md-4 mb-3">
-              <label className="form-label">FingerPrints Expiry</label>
-              <input
-                type="date"
-                className="form-control"
-                name="fingerPrintsExpiry"
-                value={form.fingerPrintsExpiry}
-                onChange={handleChange}
-                required
-              />
+            <div className="form-grid">
+              <div>
+                <label htmlFor="firstName">First name</label>
+                <input
+                  id="firstName"
+                  type="text"
+                  name="firstName"
+                  value={form.firstName}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="lastName">Last name</label>
+                <input
+                  id="lastName"
+                  type="text"
+                  name="lastName"
+                  value={form.lastName}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="dob">Date of birth</label>
+                <input
+                  id="dob"
+                  type="date"
+                  name="dob"
+                  value={form.dob}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="phoneNumber">Phone</label>
+                <input
+                  id="phoneNumber"
+                  type="tel"
+                  name="phoneNumber"
+                  value={form.phoneNumber}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="email">Email</label>
+                <input
+                  id="email"
+                  type="email"
+                  name="email"
+                  value={form.email}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="fullAddress">Residential address</label>
+                <input
+                  id="fullAddress"
+                  type="text"
+                  name="fullAddress"
+                  value={form.fullAddress}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="ssn">SSN</label>
+                <input
+                  id="ssn"
+                  type="text"
+                  name="ssn"
+                  value={form.ssn}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
             </div>
           </div>
-          {error && <div className="text-danger mb-3">{error}</div>}
-          <button type="submit" className="btn btn-primary" disabled={loading}>
-            {loading ? 'Saving...' : 'Save Driver'}
-          </button>
+
+          <div className="form-section">
+            <div>
+              <h3>License & compliance</h3>
+              <p>Stay ahead of renewal deadlines and regulatory paperwork.</p>
+            </div>
+            <div className="form-grid">
+              <div>
+                <label htmlFor="dlNumber">License number</label>
+                <input
+                  id="dlNumber"
+                  type="text"
+                  name="dlNumber"
+                  value={form.dlNumber}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="dlExpiry">License expiry</label>
+                <input
+                  id="dlExpiry"
+                  type="date"
+                  name="dlExpiry"
+                  value={form.dlExpiry}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="dotExpiry">DOT medical expiry</label>
+                <input
+                  id="dotExpiry"
+                  type="date"
+                  name="dotExpiry"
+                  value={form.dotExpiry}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="cbiExpiry">CBI clearance expiry</label>
+                <input
+                  id="cbiExpiry"
+                  type="date"
+                  name="cbiExpiry"
+                  value={form.cbiExpiry}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="mvrExpiry">MVR expiry</label>
+                <input
+                  id="mvrExpiry"
+                  type="date"
+                  name="mvrExpiry"
+                  value={form.mvrExpiry}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="fingerPrintsExpiry">Fingerprint card expiry</label>
+                <input
+                  id="fingerPrintsExpiry"
+                  type="date"
+                  name="fingerPrintsExpiry"
+                  value={form.fingerPrintsExpiry}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="form-footer">
+            <div>
+              {error && <div className="feedback error">{error}</div>}
+            </div>
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+              {loading ? 'Saving driver…' : 'Save driver'}
+            </button>
+          </div>
         </form>
       </div>
-    </div>
+    </AppLayout>
   );
 };
-
-// Styles object is unused since Bootstrap classes handle styling
-const styles = {};
 
 export default DriversCreate;
