@@ -24,9 +24,9 @@ const BookingsCreate = () => {
     wheelchairNeeded: false,
     noShowFeeApplied: false,
     pickupLat: '',
-    pickupLng: '',
+    pickupLon: '',
     dropoffLat: '',
-    dropoffLng: '',
+    dropoffLon: '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -79,14 +79,14 @@ const BookingsCreate = () => {
         setForm((prev) => ({
           ...prev,
           pickupLat: formatLatLng(latLng.lat),
-          pickupLng: formatLatLng(latLng.lng),
+          pickupLon: formatLatLng(latLng.lng),
         }));
       } else {
         setDropoffPosition(latLng);
         setForm((prev) => ({
           ...prev,
           dropoffLat: formatLatLng(latLng.lat),
-          dropoffLng: formatLatLng(latLng.lng),
+          dropoffLon: formatLatLng(latLng.lng),
         }));
       }
     },
@@ -131,7 +131,7 @@ const BookingsCreate = () => {
   };
 
   const handleCoordinateChange = (kind, axis, value) => {
-    const key = `${kind}${axis === 'lat' ? 'Lat' : 'Lng'}`;
+    const key = `${kind}${axis === 'lat' ? 'Lat' : 'Lon'}`;
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -171,14 +171,14 @@ const BookingsCreate = () => {
               setForm((prev) => ({
                 ...prev,
                 pickupLat: formatLatLng(parsed.lat),
-                pickupLng: formatLatLng(parsed.lng),
+                pickupLon: formatLatLng(parsed.lng),
               }));
             } else {
               setDropoffPosition(parsed);
               setForm((prev) => ({
                 ...prev,
                 dropoffLat: formatLatLng(parsed.lat),
-                dropoffLng: formatLatLng(parsed.lng),
+                dropoffLon: formatLatLng(parsed.lng),
               }));
             }
             return parsed;
@@ -196,7 +196,7 @@ const BookingsCreate = () => {
   const handleLocate = useCallback(
     async (kind) => {
       const latKey = kind === 'pickup' ? 'pickupLat' : 'dropoffLat';
-      const lngKey = kind === 'pickup' ? 'pickupLng' : 'dropoffLng';
+      const lngKey = kind === 'pickup' ? 'pickupLon' : 'dropoffLon';
       const addressKey = kind === 'pickup' ? 'pickupAddress' : 'dropoffAddress';
 
       await resolveCoordinates(kind, form[latKey], form[lngKey], form[addressKey]);
@@ -205,7 +205,7 @@ const BookingsCreate = () => {
   );
 
   useEffect(() => {
-    const { lat, lng } = normalizePair(form.pickupLat, form.pickupLng);
+    const { lat, lng } = normalizePair(form.pickupLat, form.pickupLon);
     setPickupPosition((prev) => {
       if (Number.isFinite(lat) && Number.isFinite(lng)) {
         if (prev && prev.lat === lat && prev.lng === lng) {
@@ -215,10 +215,10 @@ const BookingsCreate = () => {
       }
       return null;
     });
-  }, [form.pickupLat, form.pickupLng, normalizePair]);
+  }, [form.pickupLat, form.pickupLon, normalizePair]);
 
   useEffect(() => {
-    const { lat, lng } = normalizePair(form.dropoffLat, form.dropoffLng);
+    const { lat, lng } = normalizePair(form.dropoffLat, form.dropoffLon);
     setDropoffPosition((prev) => {
       if (Number.isFinite(lat) && Number.isFinite(lng)) {
         if (prev && prev.lat === lat && prev.lng === lng) {
@@ -228,19 +228,31 @@ const BookingsCreate = () => {
       }
       return null;
     });
-  }, [form.dropoffLat, form.dropoffLng, normalizePair]);
+  }, [form.dropoffLat, form.dropoffLon, normalizePair]);
 
-  const buildGeoPoint = useCallback((lat, lng) => {
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-
-    const normalizedLat = Math.round(lat * 1e6) / 1e6;
-    const normalizedLng = Math.round(lng * 1e6) / 1e6;
-
-    return {
-      type: 'Point',
-      coordinates: [normalizedLng, normalizedLat],
-    };
+  const normalizeCoordinate = useCallback((value) => {
+    if (!Number.isFinite(value)) return undefined;
+    return Math.round(value * 1e6) / 1e6;
   }, []);
+
+  const buildGeoPoint = useCallback(
+    (lat, lng) => {
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+      const normalizedLat = normalizeCoordinate(lat);
+      const normalizedLng = normalizeCoordinate(lng);
+
+      if (normalizedLat === undefined || normalizedLng === undefined) {
+        return null;
+      }
+
+      return {
+        type: 'Point',
+        coordinates: [normalizedLng, normalizedLat],
+      };
+    },
+    [normalizeCoordinate],
+  );
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -248,8 +260,8 @@ const BookingsCreate = () => {
     setLoading(true);
     try {
       const [{ lat: pLat, lng: pLng }, { lat: dLat, lng: dLng }] = await Promise.all([
-        resolveCoordinates('pickup', form.pickupLat, form.pickupLng, form.pickupAddress),
-        resolveCoordinates('dropoff', form.dropoffLat, form.dropoffLng, form.dropoffAddress),
+        resolveCoordinates('pickup', form.pickupLat, form.pickupLon, form.pickupAddress),
+        resolveCoordinates('dropoff', form.dropoffLat, form.dropoffLon, form.dropoffAddress),
       ]);
 
       const pickupPoint = buildGeoPoint(pLat, pLng);
@@ -266,6 +278,11 @@ const BookingsCreate = () => {
         return;
       }
 
+      const pickupLat = normalizeCoordinate(pLat);
+      const pickupLon = normalizeCoordinate(pLng);
+      const dropoffLat = normalizeCoordinate(dLat);
+      const dropoffLon = normalizeCoordinate(dLng);
+
       const payload = {
         customerName: form.customerName,
         phoneNumber: form.phoneNumber,
@@ -280,6 +297,14 @@ const BookingsCreate = () => {
       };
       payload.pickupPoint = pickupPoint;
       payload.dropoffPoint = dropoffPoint;
+      if (pickupLat !== undefined && pickupLon !== undefined) {
+        payload.pickupLat = pickupLat;
+        payload.pickupLon = pickupLon;
+      }
+      if (dropoffLat !== undefined && dropoffLon !== undefined) {
+        payload.dropoffLat = dropoffLat;
+        payload.dropoffLon = dropoffLon;
+      }
 
       await createBooking(payload);
       navigate('/bookings');
@@ -386,14 +411,14 @@ const BookingsCreate = () => {
                       />
                     </div>
                     <div>
-                      <label htmlFor="pickupLng">Pickup longitude</label>
+                      <label htmlFor="pickupLon">Pickup longitude</label>
                       <input
-                        id="pickupLng"
+                        id="pickupLon"
                         type="number"
-                        name="pickupLng"
+                        name="pickupLon"
                         step="0.00001"
-                        value={form.pickupLng}
-                        onChange={(event) => handleCoordinateChange('pickup', 'lng', event.target.value)}
+                        value={form.pickupLon}
+                        onChange={(event) => handleCoordinateChange('pickup', 'lon', event.target.value)}
                         placeholder="Click map or enter"
                       />
                     </div>
@@ -442,14 +467,14 @@ const BookingsCreate = () => {
                       />
                     </div>
                     <div>
-                      <label htmlFor="dropoffLng">Drop-off longitude</label>
+                      <label htmlFor="dropoffLon">Drop-off longitude</label>
                       <input
-                        id="dropoffLng"
+                        id="dropoffLon"
                         type="number"
-                        name="dropoffLng"
+                        name="dropoffLon"
                         step="0.00001"
-                        value={form.dropoffLng}
-                        onChange={(event) => handleCoordinateChange('dropoff', 'lng', event.target.value)}
+                        value={form.dropoffLon}
+                        onChange={(event) => handleCoordinateChange('dropoff', 'lon', event.target.value)}
                         placeholder="Click map or enter"
                       />
                     </div>
@@ -551,14 +576,14 @@ const BookingsCreate = () => {
               <div className="map-coordinates">
                 <div>
                   <strong>Pickup:</strong>{' '}
-                  {form.pickupLat && form.pickupLng
-                    ? `${Number(form.pickupLat).toFixed(5)}, ${Number(form.pickupLng).toFixed(5)}`
+                  {form.pickupLat && form.pickupLon
+                    ? `${Number(form.pickupLat).toFixed(5)}, ${Number(form.pickupLon).toFixed(5)}`
                     : 'Not set'}
                 </div>
                 <div>
                   <strong>Drop-off:</strong>{' '}
-                  {form.dropoffLat && form.dropoffLng
-                    ? `${Number(form.dropoffLat).toFixed(5)}, ${Number(form.dropoffLng).toFixed(5)}`
+                  {form.dropoffLat && form.dropoffLon
+                    ? `${Number(form.dropoffLat).toFixed(5)}, ${Number(form.dropoffLon).toFixed(5)}`
                     : 'Not set'}
                 </div>
               </div>

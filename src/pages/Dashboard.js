@@ -1,11 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AppLayout from '../components/AppLayout';
-import { listDrivers } from '../services/driverService';
-import { listVehicles } from '../services/vehicleService';
-import { listBookings } from '../services/bookingService';
 import { listActives } from '../services/activeService';
+import { listBookings } from '../services/bookingService';
+import { listDrivers } from '../services/driverService';
 import { getFare } from '../services/fareService';
+import { listVehicles } from '../services/vehicleService';
 
 const Dashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -21,6 +21,33 @@ const Dashboard = () => {
   const [fare, setFare] = useState(null);
 
   useEffect(() => {
+    const unwrapArray = (response, preferredKeys = []) => {
+      const payload = response?.data ?? response ?? {};
+      if (Array.isArray(payload)) return payload;
+      for (const key of preferredKeys) {
+        const value = payload?.[key];
+        if (Array.isArray(value)) return value;
+      }
+      if (Array.isArray(payload?.data)) return payload.data;
+      const firstArray = Object.values(payload).find((value) => Array.isArray(value));
+      return Array.isArray(firstArray) ? firstArray : [];
+    };
+
+    const normalizeActive = (record) => {
+      if (!record || typeof record !== 'object') return null;
+      const driver = record.driver || record.driverInfo || {};
+      const vehicle = record.vehicle || record.vehicleInfo || {};
+      return {
+        ...record,
+        status: record.status || record.currentStatus || 'Inactive',
+        availability: record.availability || record.currentAvailability || 'Offline',
+        firstName: record.firstName || driver.firstName || '',
+        lastName: record.lastName || driver.lastName || '',
+        driverId: record.driverId || driver.driverId || driver._id || '',
+        cabNumber: record.cabNumber || vehicle.cabNumber || vehicle._id || '',
+      };
+    };
+
     const loadDashboard = async () => {
       setLoading(true);
       setError('');
@@ -33,24 +60,27 @@ const Dashboard = () => {
           getFare().catch(() => ({ data: null })),
         ]);
 
-        const drivers = driversRes.data?.drivers || driversRes.data?.list || driversRes.data || [];
-        const vehicles = vehiclesRes.data?.vehicles || vehiclesRes.data?.list || vehiclesRes.data || [];
-        const bookings = bookingsRes.data?.bookings || bookingsRes.data?.results || bookingsRes.data || [];
-        const actives = activesRes.data?.actives || activesRes.data?.results || activesRes.data || [];
+        const drivers = unwrapArray(driversRes, ['drivers', 'list', 'results']);
+        const vehicles = unwrapArray(vehiclesRes, ['vehicles', 'list', 'results']);
+        const bookings = unwrapArray(bookingsRes, ['bookings', 'results']);
+        const activesRaw = unwrapArray(activesRes, ['data', 'actives', 'results']);
+        const actives = activesRaw.map((item) => normalizeActive(item)).filter(Boolean);
 
         const today = new Date();
         const bookingsToday = bookings.filter((booking) => {
-          if (!booking.pickupTime) return false;
+          if (!booking?.pickupTime) return false;
           const pickup = new Date(booking.pickupTime);
-          return pickup.toDateString() === today.toDateString();
+          return !Number.isNaN(pickup.getTime()) && pickup.toDateString() === today.toDateString();
         }).length;
 
         const upcomingBookings = bookings
-          .filter((booking) => booking.pickupTime)
+          .filter((booking) => booking?.pickupTime)
           .sort((a, b) => new Date(a.pickupTime) - new Date(b.pickupTime))
           .slice(0, 6);
 
-        const activeOnline = actives.filter((item) => item.status === 'Active' && item.availability === 'Online').length;
+        const activeOnline = actives.filter(
+          (item) => item.status === 'Active' && item.availability === 'Online',
+        ).length;
         const rosterSlice = actives
           .slice()
           .sort((a, b) => {
@@ -62,14 +92,16 @@ const Dashboard = () => {
           .slice(0, 6);
 
         setMetrics({
-          drivers: Array.isArray(drivers) ? drivers.length : 0,
-          vehicles: Array.isArray(vehicles) ? vehicles.length : 0,
+          drivers: drivers.length,
+          vehicles: vehicles.length,
           bookingsToday,
           activeOnline,
         });
         setRecentBookings(upcomingBookings);
         setActiveRoster(rosterSlice);
-        setFare(fareRes.data?.fare || null);
+
+        const farePayload = fareRes?.data?.fare || fareRes?.data?.currentFare || fareRes?.data?.data || null;
+        setFare(farePayload && !Array.isArray(farePayload) ? farePayload : null);
       } catch (err) {
         const message = err.response?.data?.message || 'Unable to load dashboard data right now.';
         setError(message);
@@ -196,8 +228,11 @@ const Dashboard = () => {
 
     return (
       <div className="roster-list">
-        {activeRoster.map((item) => (
-          <div key={item._id} className="roster-item">
+        {activeRoster.map((item, index) => (
+          <div
+            key={item._id || `${item.driverId}-${item.cabNumber}` || `roster-${index}`}
+            className="roster-item"
+          >
             <div className="roster-primary">
               <div className="roster-name">{item.firstName} {item.lastName}</div>
               <div className="roster-meta">
@@ -266,6 +301,9 @@ const Dashboard = () => {
             <div className="notice">
               Keep fares aligned with city policy. Update settings whenever regulations change to ensure accurate billing.
             </div>
+            {fare.updatedAt && (
+              <div className="fare-updated">Last updated {new Date(fare.updatedAt).toLocaleString()}</div>
+            )}
           </div>
         ) : loading ? (
           <div className="skeleton" style={{ height: '120px' }} />

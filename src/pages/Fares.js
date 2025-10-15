@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import AppLayout from '../components/AppLayout';
 import { addFare, getFare, updateFare } from '../services/fareService';
 
@@ -12,26 +12,34 @@ const Fares = () => {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [fareMeta, setFareMeta] = useState(null);
 
   const fetchFare = async () => {
     setLoading(true);
     setError('');
     try {
       const res = await getFare();
-      if (res.data && res.data.fare) {
-        const { farePerMile, extraPass, waitTimePerMinute } = res.data.fare;
+      const payload =
+        (res?.data && (res.data.fare || res.data.currentFare || res.data.data)) ||
+        (res?.data && !Array.isArray(res.data) ? res.data : null);
+
+      if (payload && typeof payload === 'object') {
+        const { farePerMile, extraPass, waitTimePerMinute } = payload;
         setForm({
           farePerMile: farePerMile ?? '',
           extraPass: extraPass ?? '',
           waitTimePerMinute: waitTimePerMinute ?? '',
         });
+        setFareMeta(payload);
         setIsExisting(true);
       } else {
         setIsExisting(false);
+        setFareMeta(null);
         setForm({ farePerMile: '', extraPass: '', waitTimePerMinute: '' });
       }
     } catch (err) {
       setIsExisting(false);
+      setFareMeta(null);
       setForm({ farePerMile: '', extraPass: '', waitTimePerMinute: '' });
     } finally {
       setLoading(false);
@@ -51,6 +59,7 @@ const Fares = () => {
     e.preventDefault();
     setError('');
     setMessage('');
+    setLoading(true);
     try {
       const numericData = {
         farePerMile: Number(form.farePerMile),
@@ -65,9 +74,12 @@ const Fares = () => {
         setMessage('Fare created successfully.');
         setIsExisting(true);
       }
+      await fetchFare();
     } catch (err) {
       const msg = err.response?.data?.message || 'Operation failed';
       setError(msg);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -84,6 +96,20 @@ const Fares = () => {
       actions={actions}
     >
       <div className="surface" style={{ maxWidth: '680px' }}>
+        {fareMeta && (
+          <div className="fare-summary">
+            <p>
+              Current fare is set to <strong>${Number(fareMeta.farePerMile || 0).toFixed(2)}</strong> per mile with
+              <strong> ${Number(fareMeta.waitTimePerMinute || 0).toFixed(2)}</strong> per minute waiting.
+            </p>
+            {fareMeta.extraPass !== undefined && fareMeta.extraPass !== null && fareMeta.extraPass !== '' && (
+              <p>Additional passengers incur ${Number(fareMeta.extraPass).toFixed(2)}.</p>
+            )}
+            <p className="muted">
+              Last updated {fareMeta.updatedAt ? new Date(fareMeta.updatedAt).toLocaleString() : 'when created'}.
+            </p>
+          </div>
+        )}
         <form onSubmit={handleSubmit}>
           <div className="form-section">
             <div>
