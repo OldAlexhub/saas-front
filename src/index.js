@@ -7,6 +7,8 @@ import App from './App';
 import 'bootstrap/dist/css/bootstrap.min.css';
 // Import Leaflet CSS for maps
 import 'leaflet/dist/leaflet.css';
+// Global theme overrides for the redesigned dashboard
+import './styles/theme.css';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(

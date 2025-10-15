@@ -1,12 +1,7 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { signup as signupAdmin } from '../services/adminService';
 
-/**
- * Signup page for new administrators. Collects the necessary fields to
- * create a new admin account. On successful signup, navigates back to the
- * login page with a success message. Displays validation or server errors.
- */
 const Signup = () => {
   const navigate = useNavigate();
   const [form, setForm] = useState({
@@ -35,7 +30,6 @@ const Signup = () => {
     try {
       await signupAdmin(form);
       setSuccess('Account created successfully! Please wait for approval.');
-      // clear form
       setForm({
         company: '',
         firstName: '',
@@ -45,10 +39,9 @@ const Signup = () => {
         confirmPassword: '',
         phoneNumber: '',
       });
-      // navigate to login after a delay
       setTimeout(() => {
         navigate('/login');
-      }, 1500);
+      }, 1600);
     } catch (err) {
       const msg = err.response?.data?.message || 'Signup failed';
       setError(msg);
@@ -58,99 +51,116 @@ const Signup = () => {
   };
 
   return (
-    <div className="container mt-5" style={{ maxWidth: '500px' }}>
-      <h2 className="mb-4 text-center">Admin Signup</h2>
-      <form onSubmit={handleSubmit}>
-        <div className="mb-3">
-          <label className="form-label">Company</label>
-          <input
-            type="text"
-            className="form-control"
-            name="company"
-            value={form.company}
-            onChange={handleChange}
-            required
-          />
+    <div className="auth-layout">
+      <section className="auth-illustration">
+        <div className="auth-illustration-content">
+          <div className="logo-circle">TO</div>
+          <div>
+            <h2>Grow your fleet</h2>
+            <p>Onboard dispatchers, manage compliance and launch new service zones effortlessly.</p>
+          </div>
+          <div className="notice">
+            TaxiOps brings <strong>end-to-end visibility</strong> to bookings, drivers and fares. Apply for an account to unlock premium tooling.
+          </div>
         </div>
-        <div className="mb-3">
-          <label className="form-label">First Name</label>
-          <input
-            type="text"
-            className="form-control"
-            name="firstName"
-            value={form.firstName}
-            onChange={handleChange}
-            required
-          />
+      </section>
+      <section className="auth-card">
+        <div className="auth-card-inner">
+          <h1>Create an admin account</h1>
+          <p className="lead">We review every request to keep the network secure.</p>
+          <form onSubmit={handleSubmit}>
+            <div className="form-grid">
+              <div>
+                <label htmlFor="company">Company name</label>
+                <input
+                  id="company"
+                  type="text"
+                  name="company"
+                  value={form.company}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="firstName">First name</label>
+                <input
+                  id="firstName"
+                  type="text"
+                  name="firstName"
+                  value={form.firstName}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="lastName">Last name</label>
+                <input
+                  id="lastName"
+                  type="text"
+                  name="lastName"
+                  value={form.lastName}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="email">Work email</label>
+                <input
+                  id="email"
+                  type="email"
+                  name="email"
+                  value={form.email}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="phoneNumber">Phone number</label>
+                <input
+                  id="phoneNumber"
+                  type="tel"
+                  name="phoneNumber"
+                  value={form.phoneNumber}
+                  onChange={handleChange}
+                  placeholder="Optional"
+                />
+              </div>
+              <div>
+                <label htmlFor="password">Password</label>
+                <input
+                  id="password"
+                  type="password"
+                  name="password"
+                  value={form.password}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="confirmPassword">Confirm password</label>
+                <input
+                  id="confirmPassword"
+                  type="password"
+                  name="confirmPassword"
+                  value={form.confirmPassword}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+            </div>
+            {error && <div className="feedback error">{error}</div>}
+            {success && <div className="feedback success">{success}</div>}
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+              {loading ? 'Submitting…' : 'Request access'}
+            </button>
+          </form>
+          <p className="form-help">
+            Already have credentials? <Link to="/login">Sign in</Link>.
+          </p>
         </div>
-        <div className="mb-3">
-          <label className="form-label">Last Name</label>
-          <input
-            type="text"
-            className="form-control"
-            name="lastName"
-            value={form.lastName}
-            onChange={handleChange}
-            required
-          />
-        </div>
-        <div className="mb-3">
-          <label className="form-label">Email</label>
-          <input
-            type="email"
-            className="form-control"
-            name="email"
-            value={form.email}
-            onChange={handleChange}
-            required
-          />
-        </div>
-        <div className="mb-3">
-          <label className="form-label">Password</label>
-          <input
-            type="password"
-            className="form-control"
-            name="password"
-            value={form.password}
-            onChange={handleChange}
-            required
-          />
-        </div>
-        <div className="mb-3">
-          <label className="form-label">Confirm Password</label>
-          <input
-            type="password"
-            className="form-control"
-            name="confirmPassword"
-            value={form.confirmPassword}
-            onChange={handleChange}
-            required
-          />
-        </div>
-        <div className="mb-3">
-          <label className="form-label">Phone Number (optional)</label>
-          <input
-            type="text"
-            className="form-control"
-            name="phoneNumber"
-            value={form.phoneNumber}
-            onChange={handleChange}
-          />
-        </div>
-        {error && <div className="text-danger mb-2">{error}</div>}
-        {success && <div className="text-success mb-2">{success}</div>}
-        <button type="submit" className="btn btn-primary w-100" disabled={loading}>
-          {loading ? 'Signing up...' : 'Sign Up'}
-        </button>
-      </form>
-      <p className="mt-3 text-center">
-        Already have an account? <Link to="/login">Log in</Link>.
-      </p>
+      </section>
     </div>
   );
 };
-
-// Inline styles removed since Bootstrap classes are used
-const styles = {};
 
 export default Signup;
