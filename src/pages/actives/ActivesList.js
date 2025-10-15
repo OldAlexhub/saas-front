@@ -3,6 +3,55 @@ import { Link } from 'react-router-dom';
 import AppLayout from '../../components/AppLayout';
 import { listActives, updateAvailability, updateStatus } from '../../services/activeService';
 
+const pickFirst = (...values) => values.find((value) => value !== undefined && value !== null && value !== '') ?? '';
+
+const splitDriverName = (driver) => {
+  const rawName = pickFirst(driver?.name, driver?.fullName);
+  if (!rawName) return { first: '', last: '' };
+  const parts = String(rawName)
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!parts.length) return { first: '', last: '' };
+  const [first, ...rest] = parts;
+  return { first, last: rest.join(' ') };
+};
+
+const normalizeActiveRecord = (record) => {
+  if (!record || typeof record !== 'object') return null;
+
+  const driver = record.driver || record.driverInfo || record.driverDetails || record.driverProfile || {};
+  const vehicle = record.vehicle || record.vehicleInfo || record.vehicleDetails || record.cab || {};
+  const { first: derivedFirst, last: derivedLast } = splitDriverName(driver);
+
+  const normalized = {
+    ...record,
+    driverId: pickFirst(record.driverId, driver.driverId, driver._id, driver.id),
+    firstName: pickFirst(record.firstName, driver.firstName, driver.givenName, derivedFirst),
+    lastName: pickFirst(record.lastName, driver.lastName, driver.familyName, derivedLast),
+    cabNumber: pickFirst(record.cabNumber, vehicle.cabNumber, vehicle._id, vehicle.id),
+    licPlates: pickFirst(record.licPlates, vehicle.licPlates, vehicle.licensePlate, vehicle.plate, vehicle.plates),
+    make: pickFirst(record.make, vehicle.make, vehicle.vehicleMake),
+    model: pickFirst(record.model, vehicle.model, vehicle.vehicleModel),
+    color: pickFirst(record.color, vehicle.color, vehicle.vehicleColor),
+    status: pickFirst(record.status, record.currentStatus, record.state, 'Inactive'),
+    availability: pickFirst(
+      record.availability,
+      record.currentAvailability,
+      record.availabilityStatus,
+      'Offline',
+    ),
+    currentLocation:
+      record.currentLocation ||
+      record.location ||
+      driver.currentLocation ||
+      vehicle.currentLocation ||
+      undefined,
+  };
+
+  return normalized;
+};
+
 const ActivesList = () => {
   const [actives, setActives] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,7 +71,10 @@ const ActivesList = () => {
         res.data?.results ||
         res.data ||
         [];
-      setActives(Array.isArray(payload) ? payload : []);
+      const normalized = (Array.isArray(payload) ? payload : [])
+        .map((item) => normalizeActiveRecord(item))
+        .filter(Boolean);
+      setActives(normalized);
     } catch (err) {
       const msg = err.response?.data?.message || 'Failed to fetch actives';
       setError(msg);
@@ -45,6 +97,10 @@ const ActivesList = () => {
         item.lastName,
         item.cabNumber,
         item.driverId,
+        item.licPlates,
+        item.make,
+        item.model,
+        item.color,
         item.status,
         item.availability,
       ]
@@ -118,23 +174,29 @@ const ActivesList = () => {
           </tr>
         </thead>
         <tbody>
-          {filtered.map((active) => (
-            <tr key={active._id}>
-              <td>
-                <div className="table-stack">
-                  <span className="primary">{active.firstName} {active.lastName}</span>
-                  <span className="secondary">ID: {active.driverId || '—'}</span>
-                </div>
-              </td>
-              <td>
-                <div className="table-stack">
-                  <span className="primary">Cab #{active.cabNumber || '—'}</span>
-                  <span className="secondary">Last ping: {active.updatedAt ? new Date(active.updatedAt).toLocaleString() : 'N/A'}</span>
-                </div>
-              </td>
-              <td>
-                <span className={`badge ${active.status === 'Active' ? 'badge-success' : 'badge-warning'}`}>
-                  {active.status || 'Inactive'}
+          {filtered.map((active) => {
+            const lastPing = active.currentLocation?.updatedAt || active.updatedAt || active.createdAt;
+            const driverLabel = [active.firstName, active.lastName].filter(Boolean).join(' ') ||
+              pickFirst(active.driver?.name, active.driver?.fullName, active.driver?.email, '—');
+            return (
+              <tr key={active._id || `${active.driverId}-${active.cabNumber}`}>
+                <td>
+                  <div className="table-stack">
+                    <span className="primary">{driverLabel}</span>
+                    <span className="secondary">ID: {active.driverId || '—'}</span>
+                  </div>
+                </td>
+                <td>
+                  <div className="table-stack">
+                    <span className="primary">Cab #{active.cabNumber || '—'}</span>
+                    <span className="secondary">
+                      Last ping: {lastPing ? new Date(lastPing).toLocaleString() : 'N/A'}
+                    </span>
+                  </div>
+                </td>
+                <td>
+                  <span className={`badge ${active.status === 'Active' ? 'badge-success' : 'badge-warning'}`}>
+                    {active.status || 'Inactive'}
                 </span>
               </td>
               <td>
@@ -166,7 +228,8 @@ const ActivesList = () => {
                 </div>
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     );

@@ -72,23 +72,26 @@ const BookingsCreate = () => {
     return { lat: undefined, lng: undefined };
   }, []);
 
-  const assignCoordinates = useCallback((kind, latLng) => {
-    if (kind === 'pickup') {
-      setPickupPosition(latLng);
-      setForm((prev) => ({
-        ...prev,
-        pickupLat: formatLatLng(latLng.lat),
-        pickupLng: formatLatLng(latLng.lng),
-      }));
-    } else {
-      setDropoffPosition(latLng);
-      setForm((prev) => ({
-        ...prev,
-        dropoffLat: formatLatLng(latLng.lat),
-        dropoffLng: formatLatLng(latLng.lng),
-      }));
-    }
-  }, [formatLatLng]);
+  const assignCoordinates = useCallback(
+    (kind, latLng) => {
+      if (kind === 'pickup') {
+        setPickupPosition(latLng);
+        setForm((prev) => ({
+          ...prev,
+          pickupLat: formatLatLng(latLng.lat),
+          pickupLng: formatLatLng(latLng.lng),
+        }));
+      } else {
+        setDropoffPosition(latLng);
+        setForm((prev) => ({
+          ...prev,
+          dropoffLat: formatLatLng(latLng.lat),
+          dropoffLng: formatLatLng(latLng.lng),
+        }));
+      }
+    },
+    [formatLatLng],
+  );
 
   // Marker component to set pickup location on map click
   function LocationMarker() {
@@ -227,6 +230,18 @@ const BookingsCreate = () => {
     });
   }, [form.dropoffLat, form.dropoffLng, normalizePair]);
 
+  const buildGeoPoint = useCallback((lat, lng) => {
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+    const normalizedLat = Math.round(lat * 1e6) / 1e6;
+    const normalizedLng = Math.round(lng * 1e6) / 1e6;
+
+    return {
+      type: 'Point',
+      coordinates: [normalizedLng, normalizedLat],
+    };
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -237,13 +252,15 @@ const BookingsCreate = () => {
         resolveCoordinates('dropoff', form.dropoffLat, form.dropoffLng, form.dropoffAddress),
       ]);
 
-      if (!Number.isFinite(pLat) || !Number.isFinite(pLng)) {
+      const pickupPoint = buildGeoPoint(pLat, pLng);
+      if (!pickupPoint) {
         setError('Pickup coordinates are required. Click the map or refine the pickup address.');
         setLoading(false);
         return;
       }
 
-      if (!Number.isFinite(dLat) || !Number.isFinite(dLng)) {
+      const dropoffPoint = buildGeoPoint(dLat, dLng);
+      if (!dropoffPoint) {
         setError('Drop-off coordinates are required. Click the map or refine the drop-off address.');
         setLoading(false);
         return;
@@ -261,15 +278,8 @@ const BookingsCreate = () => {
         wheelchairNeeded: Boolean(form.wheelchairNeeded),
         noShowFeeApplied: Boolean(form.noShowFeeApplied),
       };
-      payload.pickupPoint = {
-        type: 'Point',
-        coordinates: [Number(pLng.toFixed(6)), Number(pLat.toFixed(6))],
-      };
-
-      payload.dropoffPoint = {
-        type: 'Point',
-        coordinates: [Number(dLng.toFixed(6)), Number(dLat.toFixed(6))],
-      };
+      payload.pickupPoint = pickupPoint;
+      payload.dropoffPoint = dropoffPoint;
 
       await createBooking(payload);
       navigate('/bookings');
