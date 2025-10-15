@@ -1,13 +1,7 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { login as loginAdmin } from '../services/adminService';
 
-/**
- * Login page for administrators. Allows a user to input their email and password
- * to obtain a JWT token. On success, the token is stored in localStorage and
- * the user is redirected to the dashboard. Displays any error messages returned
- * by the backend.
- */
 const Login = () => {
   const navigate = useNavigate();
   const [form, setForm] = useState({ email: '', password: '' });
@@ -37,44 +31,58 @@ const Login = () => {
   };
 
   return (
-    <div className="container mt-5" style={{ maxWidth: '400px' }}>
-      <h2 className="mb-4 text-center">Admin Login</h2>
-      <form onSubmit={handleSubmit}>
-        <div className="mb-3">
-          <label className="form-label">Email</label>
-          <input
-            type="email"
-            className="form-control"
-            name="email"
-            value={form.email}
-            onChange={handleChange}
-            required
-          />
+    <div className="auth-layout">
+      <section className="auth-illustration">
+        <div className="auth-illustration-content">
+          <div className="logo-circle">TO</div>
+          <div>
+            <h2>TaxiOps Control</h2>
+            <p>Monitor bookings, drivers and fares from a single intelligent cockpit.</p>
+          </div>
+          <div className="notice">
+            <strong>Real-time insight</strong> into every shift. Dispatch faster, resolve issues sooner and keep your riders happy.
+          </div>
         </div>
-        <div className="mb-3">
-          <label className="form-label">Password</label>
-          <input
-            type="password"
-            className="form-control"
-            name="password"
-            value={form.password}
-            onChange={handleChange}
-            required
-          />
+      </section>
+      <section className="auth-card">
+        <div className="auth-card-inner">
+          <h1>Welcome back</h1>
+          <p className="lead">Sign in to orchestrate your taxi operations.</p>
+          <form onSubmit={handleSubmit}>
+            <div>
+              <label htmlFor="email">Work email</label>
+              <input
+                id="email"
+                type="email"
+                name="email"
+                value={form.email}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <div>
+              <label htmlFor="password">Password</label>
+              <input
+                id="password"
+                type="password"
+                name="password"
+                value={form.password}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            {error && <div className="feedback error">{error}</div>}
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+              {loading ? 'Signing in…' : 'Sign in'}
+            </button>
+          </form>
+          <p className="form-help">
+            Need a TaxiOps account? <Link to="/signup">Request access here</Link>.
+          </p>
         </div>
-        {error && <div className="text-danger mb-3">{error}</div>}
-        <button type="submit" className="btn btn-primary w-100" disabled={loading}>
-          {loading ? 'Logging in...' : 'Login'}
-        </button>
-      </form>
-      <p className="mt-3 text-center">
-        Don&apos;t have an account? <Link to="/signup">Sign up here</Link>.
-      </p>
+      </section>
     </div>
   );
 };
-
-// Inline styles removed since Bootstrap classes are used
-const styles = {};
 
 export default Login;
