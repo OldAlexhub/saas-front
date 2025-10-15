@@ -545,6 +545,13 @@ a:hover {
   color: inherit;
 }
 
+.btn-inline {
+  margin-top: 10px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  align-self: flex-start;
+}
+
 .btn span.icon {
   display: inline-flex;
   align-items: center;
@@ -662,6 +669,12 @@ a:hover {
   gap: 18px 20px;
 }
 
+.form-grid.mini {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
 .form-grid.two-column {
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
 }
@@ -695,6 +708,11 @@ a:hover {
   font-size: 0.9rem;
 }
 
+.form-grid.mini label {
+  font-size: 0.8rem;
+  margin-bottom: 6px;
+}
+
 .form-grid input,
 .form-grid textarea,
 .form-grid select {
@@ -705,6 +723,11 @@ a:hover {
   background: rgba(15, 23, 42, 0.6);
   color: var(--text-primary);
   outline: none;
+}
+
+.form-grid.mini input {
+  padding: 10px 12px;
+  font-size: 0.85rem;
 }
 
 .form-grid input:focus,
@@ -750,8 +773,6 @@ a:hover {
   text-align: center;
 }
 
-<<<<<<< HEAD
-=======
 .map-toggle {
   display: flex;
   gap: 12px;
@@ -809,7 +830,6 @@ a:hover {
   accent-color: var(--accent-primary);
 }
 
->>>>>>> codex/redesign-application-layout-and-style-423sdr
 .auth-layout {
   min-height: 100vh;
   display: grid;

@@ -48,18 +48,15 @@ const BookingsCreate = () => {
     return defaultCenter;
   }, [defaultCenter, dropoffPosition, pickupPosition]);
 
-  const assignCoordinates = useCallback(
-    (kind, latLng) => {
-      if (kind === 'pickup') {
-        setPickupPosition(latLng);
-        setForm((prev) => ({ ...prev, pickupLat: latLng.lat, pickupLng: latLng.lng }));
-      } else {
-        setDropoffPosition(latLng);
-        setForm((prev) => ({ ...prev, dropoffLat: latLng.lat, dropoffLng: latLng.lng }));
-      }
-    },
-    [],
-  );
+  const assignCoordinates = useCallback((kind, latLng) => {
+    if (kind === 'pickup') {
+      setPickupPosition(latLng);
+      setForm((prev) => ({ ...prev, pickupLat: latLng.lat, pickupLng: latLng.lng }));
+    } else {
+      setDropoffPosition(latLng);
+      setForm((prev) => ({ ...prev, dropoffLat: latLng.lat, dropoffLng: latLng.lng }));
+    }
+  }, []);
 
   // Marker component to set pickup location on map click
   function LocationMarker() {
@@ -96,6 +93,11 @@ const BookingsCreate = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleCoordinateChange = (kind, axis, value) => {
+    const key = `${kind}${axis === 'lat' ? 'Lat' : 'Lng'}`;
+    setForm((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleCheckboxChange = (e) => {
@@ -141,6 +143,45 @@ const BookingsCreate = () => {
 
     return { lat: undefined, lng: undefined };
   }, []);
+
+  const handleLocate = useCallback(
+    async (kind) => {
+      const latKey = kind === 'pickup' ? 'pickupLat' : 'dropoffLat';
+      const lngKey = kind === 'pickup' ? 'pickupLng' : 'dropoffLng';
+      const addressKey = kind === 'pickup' ? 'pickupAddress' : 'dropoffAddress';
+
+      await resolveCoordinates(kind, form[latKey], form[lngKey], form[addressKey]);
+    },
+    [form, resolveCoordinates],
+  );
+
+  useEffect(() => {
+    const lat = parseFloat(form.pickupLat);
+    const lng = parseFloat(form.pickupLng);
+    setPickupPosition((prev) => {
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        if (prev && prev.lat === lat && prev.lng === lng) {
+          return prev;
+        }
+        return { lat, lng };
+      }
+      return null;
+    });
+  }, [form.pickupLat, form.pickupLng]);
+
+  useEffect(() => {
+    const lat = parseFloat(form.dropoffLat);
+    const lng = parseFloat(form.dropoffLng);
+    setDropoffPosition((prev) => {
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        if (prev && prev.lat === lat && prev.lng === lng) {
+          return prev;
+        }
+        return { lat, lng };
+      }
+      return null;
+    });
+  }, [form.dropoffLat, form.dropoffLng]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -267,8 +308,42 @@ const BookingsCreate = () => {
                     name="pickupAddress"
                     value={form.pickupAddress}
                     onChange={handleChange}
+                    onBlur={() => handleLocate('pickup')}
                     required
                   />
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-inline"
+                    onClick={() => handleLocate('pickup')}
+                  >
+                    Locate pickup on map
+                  </button>
+                  <div className="form-grid mini">
+                    <div>
+                      <label htmlFor="pickupLat">Pickup latitude</label>
+                      <input
+                        id="pickupLat"
+                        type="number"
+                        name="pickupLat"
+                        step="0.00001"
+                        value={form.pickupLat}
+                        onChange={(event) => handleCoordinateChange('pickup', 'lat', event.target.value)}
+                        placeholder="Click map or enter"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="pickupLng">Pickup longitude</label>
+                      <input
+                        id="pickupLng"
+                        type="number"
+                        name="pickupLng"
+                        step="0.00001"
+                        value={form.pickupLng}
+                        onChange={(event) => handleCoordinateChange('pickup', 'lng', event.target.value)}
+                        placeholder="Click map or enter"
+                      />
+                    </div>
+                  </div>
                 </div>
                 <div>
                   <label htmlFor="pickupTime">Pickup time</label>
@@ -289,8 +364,78 @@ const BookingsCreate = () => {
                     name="dropoffAddress"
                     value={form.dropoffAddress}
                     onChange={handleChange}
+                    onBlur={() => handleLocate('dropoff')}
                     required
                   />
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-inline"
+                    onClick={() => handleLocate('dropoff')}
+                  >
+                    Locate drop-off on map
+                  </button>
+                  <div className="form-grid mini">
+                    <div>
+                      <label htmlFor="dropoffLat">Drop-off latitude</label>
+                      <input
+                        id="dropoffLat"
+                        type="number"
+                        name="dropoffLat"
+                        step="0.00001"
+                        value={form.dropoffLat}
+                        onChange={(event) => handleCoordinateChange('dropoff', 'lat', event.target.value)}
+                        placeholder="Click map or enter"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="dropoffLng">Drop-off longitude</label>
+                      <input
+                        id="dropoffLng"
+                        type="number"
+                        name="dropoffLng"
+                        step="0.00001"
+                        value={form.dropoffLng}
+                        onChange={(event) => handleCoordinateChange('dropoff', 'lng', event.target.value)}
+                        placeholder="Click map or enter"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="dispatchMethod">Dispatch method</label>
+                  <select
+                    id="dispatchMethod"
+                    name="dispatchMethod"
+                    value={form.dispatchMethod}
+                    onChange={handleChange}
+                  >
+                    <option value="manual">Manual</option>
+                    <option value="auto">Auto assign</option>
+                  </select>
+                </div>
+                <div className="checkbox-field">
+                  <label htmlFor="wheelchairNeeded">
+                    <input
+                      id="wheelchairNeeded"
+                      type="checkbox"
+                      name="wheelchairNeeded"
+                      checked={form.wheelchairNeeded}
+                      onChange={handleCheckboxChange}
+                    />
+                    Wheelchair accessible vehicle required
+                  </label>
+                </div>
+                <div className="checkbox-field">
+                  <label htmlFor="noShowFeeApplied">
+                    <input
+                      id="noShowFeeApplied"
+                      type="checkbox"
+                      name="noShowFeeApplied"
+                      checked={form.noShowFeeApplied}
+                      onChange={handleCheckboxChange}
+                    />
+                    Apply no-show fee if rider cancels late
+                  </label>
                 </div>
                 <div>
                   <label htmlFor="dispatchMethod">Dispatch method</label>
@@ -341,11 +486,6 @@ const BookingsCreate = () => {
                 </div>
               </div>
             </div>
-
-            <input type="hidden" name="pickupLat" value={form.pickupLat} />
-            <input type="hidden" name="pickupLng" value={form.pickupLng} />
-            <input type="hidden" name="dropoffLat" value={form.dropoffLat} />
-            <input type="hidden" name="dropoffLng" value={form.dropoffLng} />
 
             <div className="form-footer">
               <div>{error && <div className="feedback error">{error}</div>}</div>
