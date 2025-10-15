@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import axios from 'axios';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
 import { useNavigate } from 'react-router-dom';
 import NavBar from '../../components/NavBar';
@@ -53,9 +54,46 @@ const BookingsCreate = () => {
     setError('');
     setLoading(true);
     try {
+      // Prepare payload and ensure coordinates are numbers.  If the user did not
+      // click on the map to set a pickup location, attempt to geocode the
+      // pickupAddress using the Nominatim API.  This helps prevent backend
+      // errors when a pickupPoint is required for geospatial indexing.
+      let lat = form.pickupLat;
+      let lng = form.pickupLng;
+      // Attempt geocoding if lat/lng are empty and address provided
+      if ((!lat || !lng) && form.pickupAddress) {
+        try {
+          const geoRes = await axios.get('https://nominatim.openstreetmap.org/search', {
+            params: {
+              q: form.pickupAddress,
+              format: 'json',
+              limit: 1,
+            },
+            headers: {
+              // Identify our client per Nominatim usage policy
+              'Accept-Language': 'en',
+            },
+          });
+          if (Array.isArray(geoRes.data) && geoRes.data.length > 0) {
+            const { lat: gLat, lon: gLon } = geoRes.data[0];
+            lat = parseFloat(gLat);
+            lng = parseFloat(gLon);
+            // Update form state so hidden fields reflect geocoded values
+            setForm((prev) => ({ ...prev, pickupLat: lat, pickupLng: lng }));
+          }
+        } catch (geoErr) {
+          // If geocoding fails, we proceed without coordinates. Backend will
+          // reject but error will be caught and displayed.
+          console.warn('Geocoding failed:', geoErr.message);
+        }
+      }
       const payload = {
         ...form,
+        // ensure passengers is numeric
         passengers: Number(form.passengers),
+        // include coordinates only if available
+        pickupLat: lat ? Number(lat) : undefined,
+        pickupLng: lng ? Number(lng) : undefined,
       };
       await createBooking(payload);
       navigate('/bookings');
