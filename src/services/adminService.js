@@ -33,7 +33,9 @@ export const login = (data) => {
  * @param {string} approved - Either "yes" or "no".
  */
 export const updateApproval = (id, approved) => {
-  const url = process.env.REACT_APP_ADMIN_APPROVAL.replace(':id', id);
+  const template = process.env.REACT_APP_ADMIN_APPROVAL;
+  const base = process.env.REACT_APP_ADMIN_SIGNUP || '/admins';
+  const url = template ? template.replace(':id', id) : `${base}/${id}/approval`;
   return API.put(url, { approved });
 };
 
