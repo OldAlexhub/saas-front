@@ -6,7 +6,11 @@ import API from './api';
  * Get the current fare configuration.
  */
 export const getFare = () => {
-  // The backend provides the current fare at /fares/current
+  const currentEndpoint = process.env.REACT_APP_FARE_CURRENT;
+  if (currentEndpoint) {
+    return API.get(currentEndpoint);
+  }
+  // Fallback to /fares/current if specific env var is missing
   return API.get(`${process.env.REACT_APP_FARES}/current`);
 };
 

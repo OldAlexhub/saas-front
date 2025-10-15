@@ -4,6 +4,14 @@ import API from './api';
 // These functions wrap axios calls and return the resulting promises.
 
 /**
+ * Fetch all admin users. This is primarily used by the approvals panel to
+ * review pending accounts.
+ */
+export const listAdmins = () => {
+  return API.get(process.env.REACT_APP_ADMIN_SIGNUP);
+};
+
+/**
  * Sign up a new admin account.
  * @param {Object} data - An object containing company, firstName, lastName, email, password, confirmPassword and optional phoneNumber.
  */
@@ -29,4 +37,4 @@ export const updateApproval = (id, approved) => {
   return API.put(url, { approved });
 };
 
-export default { signup, login, updateApproval };
+export default { listAdmins, signup, login, updateApproval };
