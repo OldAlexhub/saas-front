@@ -1,10 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
-<<<<<<< HEAD
-import { MapContainer, Marker, Popup, TileLayer, useMapEvents } from 'react-leaflet';
-=======
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet';
->>>>>>> codex/redesign-application-layout-and-style-423sdr
 import { Link, useNavigate } from 'react-router-dom';
 import AppLayout from '../../components/AppLayout';
 import { createBooking } from '../../services/bookingService';
@@ -293,11 +289,6 @@ const BookingsCreate = () => {
                     name="dropoffAddress"
                     value={form.dropoffAddress}
                     onChange={handleChange}
-<<<<<<< HEAD
-                    placeholder="Optional"
-                  />
-                </div>
-=======
                     required
                   />
                 </div>
@@ -337,7 +328,6 @@ const BookingsCreate = () => {
                     Apply no-show fee if rider cancels late
                   </label>
                 </div>
->>>>>>> codex/redesign-application-layout-and-style-423sdr
                 <div style={{ gridColumn: '1 / -1' }}>
                   <label htmlFor="notes">Internal notes</label>
                   <textarea
@@ -354,11 +344,8 @@ const BookingsCreate = () => {
 
             <input type="hidden" name="pickupLat" value={form.pickupLat} />
             <input type="hidden" name="pickupLng" value={form.pickupLng} />
-<<<<<<< HEAD
-=======
             <input type="hidden" name="dropoffLat" value={form.dropoffLat} />
             <input type="hidden" name="dropoffLng" value={form.dropoffLng} />
->>>>>>> codex/redesign-application-layout-and-style-423sdr
 
             <div className="form-footer">
               <div>{error && <div className="feedback error">{error}</div>}</div>
@@ -372,13 +359,6 @@ const BookingsCreate = () => {
         <div className="panel">
           <div className="form-section" style={{ marginBottom: 0 }}>
             <div>
-<<<<<<< HEAD
-              <h3>Pickup location</h3>
-              <p>Click the map to refine the pickup coordinates for dispatch.</p>
-            </div>
-            <div className="map-wrapper">
-              <MapContainer center={[position.lat, position.lng]} zoom={12} style={{ height: '320px', width: '100%' }}>
-=======
               <h3>Pickup & drop-off map</h3>
               <p>
                 Click the map to place {mapFocus === 'pickup' ? 'pickup' : 'drop-off'} coordinates. Use the toggle below to
@@ -387,7 +367,6 @@ const BookingsCreate = () => {
             </div>
             <div className="map-wrapper">
               <MapContainer center={[resolvedCenter.lat, resolvedCenter.lng]} zoom={12} style={{ height: '320px', width: '100%' }}>
->>>>>>> codex/redesign-application-layout-and-style-423sdr
                 <TileLayer
                   attribution="&copy; OpenStreetMap contributors"
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -395,9 +374,6 @@ const BookingsCreate = () => {
                 <MapAutoCenter />
                 <LocationMarker />
               </MapContainer>
-<<<<<<< HEAD
-              <small>Click on the map to set pickup location.</small>
-=======
               <div className="map-toggle">
                 <button
                   type="button"
@@ -432,7 +408,6 @@ const BookingsCreate = () => {
                 Addresses will auto-geocode if coordinates are missing, but confirming both markers prevents dispatch
                 issues.
               </small>
->>>>>>> codex/redesign-application-layout-and-style-423sdr
             </div>
           </div>
         </div>
@@ -441,8 +416,4 @@ const BookingsCreate = () => {
   );
 };
 
-<<<<<<< HEAD
 export default BookingsCreate;
-=======
-export default BookingsCreate;
->>>>>>> codex/redesign-application-layout-and-style-423sdr
