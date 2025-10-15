@@ -41,7 +41,9 @@ export const updateBooking = (id, data) => {
  * @param {Object} data - Contains driverId, cabNumber or mode="auto" and optional coordinates.
  */
 export const assignBooking = (id, data) => {
-  return API.patch(`${process.env.REACT_APP_BOOKINGS}/${id}/assign`, data);
+  const template = process.env.REACT_APP_BOOKINGS_ASSIGN;
+  const url = template ? template.replace(':id', id) : `${process.env.REACT_APP_BOOKINGS}/${id}/assign`;
+  return API.patch(url, data);
 };
 
 /**
@@ -50,7 +52,9 @@ export const assignBooking = (id, data) => {
  * @param {Object} data - Contains toStatus and other related fields.
  */
 export const changeStatus = (id, data) => {
-  return API.patch(`${process.env.REACT_APP_BOOKINGS}/${id}/status`, data);
+  const template = process.env.REACT_APP_BOOKINGS_STATUS;
+  const url = template ? template.replace(':id', id) : `${process.env.REACT_APP_BOOKINGS}/${id}/status`;
+  return API.patch(url, data);
 };
 
 /**
@@ -58,7 +62,9 @@ export const changeStatus = (id, data) => {
  * @param {string} id - Booking document id.
  */
 export const cancelBooking = (id) => {
-  return API.post(`${process.env.REACT_APP_BOOKINGS}/${id}/cancel`);
+  const template = process.env.REACT_APP_BOOKINGS_CANCEL;
+  const url = template ? template.replace(':id', id) : `${process.env.REACT_APP_BOOKINGS}/${id}/cancel`;
+  return API.post(url);
 };
 
 export default {
