@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
-import { useNavigate } from 'react-router-dom';
-import NavBar from '../../components/NavBar';
+import { MapContainer, Marker, Popup, TileLayer, useMapEvents } from 'react-leaflet';
+import { Link, useNavigate } from 'react-router-dom';
+import AppLayout from '../../components/AppLayout';
 import { createBooking } from '../../services/bookingService';
 
 /**
@@ -105,117 +105,149 @@ const BookingsCreate = () => {
     }
   };
 
+  const actions = (
+    <Link to="/bookings" className="btn btn-ghost">
+      Back to bookings
+    </Link>
+  );
+
   return (
-    <div>
-      <NavBar />
-      <div className="container mt-4">
-        <h2 className="mb-3">Add Booking</h2>
-        <div className="row">
-          <div className="col-md-6 mb-3">
-            <form onSubmit={handleSubmit}>
-              <div className="mb-3">
-                <label className="form-label">Customer Name</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  name="customerName"
-                  value={form.customerName}
-                  onChange={handleChange}
-                  required
-                />
+    <AppLayout
+      title="Create booking"
+      subtitle="Capture trip details, assign a driver and get the ride scheduled in seconds."
+      actions={actions}
+    >
+      <div className="grid-two">
+        <div className="panel">
+          <form onSubmit={handleSubmit}>
+            <div className="form-section">
+              <div>
+                <h3>Rider details</h3>
+                <p>Let us know who is travelling and how to reach them.</p>
               </div>
-              <div className="mb-3">
-                <label className="form-label">Phone Number</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  name="phoneNumber"
-                  value={form.phoneNumber}
-                  onChange={handleChange}
-                  required
-                />
+              <div className="form-grid">
+                <div>
+                  <label htmlFor="customerName">Customer name</label>
+                  <input
+                    id="customerName"
+                    type="text"
+                    name="customerName"
+                    value={form.customerName}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="phoneNumber">Phone number</label>
+                  <input
+                    id="phoneNumber"
+                    type="tel"
+                    name="phoneNumber"
+                    value={form.phoneNumber}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="passengers">Passengers</label>
+                  <input
+                    id="passengers"
+                    type="number"
+                    min="1"
+                    name="passengers"
+                    value={form.passengers}
+                    onChange={handleChange}
+                  />
+                </div>
               </div>
-              <div className="mb-3">
-                <label className="form-label">Pickup Address</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  name="pickupAddress"
-                  value={form.pickupAddress}
-                  onChange={handleChange}
-                  required
-                />
+            </div>
+
+            <div className="form-section">
+              <div>
+                <h3>Trip plan</h3>
+                <p>Set the pickup, drop-off and scheduling info.</p>
               </div>
-              <div className="mb-3">
-                <label className="form-label">Pickup Time</label>
-                <input
-                  type="datetime-local"
-                  className="form-control"
-                  name="pickupTime"
-                  value={form.pickupTime}
-                  onChange={handleChange}
-                  required
-                />
+              <div className="form-grid">
+                <div>
+                  <label htmlFor="pickupAddress">Pickup address</label>
+                  <input
+                    id="pickupAddress"
+                    type="text"
+                    name="pickupAddress"
+                    value={form.pickupAddress}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="pickupTime">Pickup time</label>
+                  <input
+                    id="pickupTime"
+                    type="datetime-local"
+                    name="pickupTime"
+                    value={form.pickupTime}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="dropoffAddress">Drop-off address</label>
+                  <input
+                    id="dropoffAddress"
+                    type="text"
+                    name="dropoffAddress"
+                    value={form.dropoffAddress}
+                    onChange={handleChange}
+                    placeholder="Optional"
+                  />
+                </div>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label htmlFor="notes">Internal notes</label>
+                  <textarea
+                    id="notes"
+                    name="notes"
+                    rows={3}
+                    value={form.notes}
+                    onChange={handleChange}
+                    placeholder="Door codes, special requests, flight numbers..."
+                  />
+                </div>
               </div>
-              <div className="mb-3">
-                <label className="form-label">Dropoff Address (optional)</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  name="dropoffAddress"
-                  value={form.dropoffAddress}
-                  onChange={handleChange}
-                />
-              </div>
-              <div className="mb-3">
-                <label className="form-label">Passengers</label>
-                <input
-                  type="number"
-                  className="form-control"
-                  name="passengers"
-                  value={form.passengers}
-                  onChange={handleChange}
-                  min="1"
-                />
-              </div>
-              <div className="mb-3">
-                <label className="form-label">Notes</label>
-                <textarea
-                  className="form-control"
-                  name="notes"
-                  value={form.notes}
-                  onChange={handleChange}
-                  rows={3}
-                />
-              </div>
-              {/* Hidden lat/lng fields for backend submission */}
-              <input type="hidden" name="pickupLat" value={form.pickupLat} />
-              <input type="hidden" name="pickupLng" value={form.pickupLng} />
-              {error && <div className="text-danger mb-2">{error}</div>}
+            </div>
+
+            <input type="hidden" name="pickupLat" value={form.pickupLat} />
+            <input type="hidden" name="pickupLng" value={form.pickupLng} />
+
+            <div className="form-footer">
+              <div>{error && <div className="feedback error">{error}</div>}</div>
               <button type="submit" className="btn btn-primary" disabled={loading}>
-                {loading ? 'Saving...' : 'Save Booking'}
+                {loading ? 'Saving booking…' : 'Save booking'}
               </button>
-            </form>
-          </div>
-          <div className="col-md-6 mb-3">
-            <div style={{ height: '400px', width: '100%' }}>
-              <MapContainer center={[position.lat, position.lng]} zoom={12} style={{ height: '100%', width: '100%' }}>
+            </div>
+          </form>
+        </div>
+
+        <div className="panel">
+          <div className="form-section" style={{ marginBottom: 0 }}>
+            <div>
+              <h3>Pickup location</h3>
+              <p>Click the map to refine the pickup coordinates for dispatch.</p>
+            </div>
+            <div className="map-wrapper">
+              <MapContainer center={[position.lat, position.lng]} zoom={12} style={{ height: '320px', width: '100%' }}>
                 <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  attribution="&copy; OpenStreetMap contributors"
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
                 <LocationMarker />
               </MapContainer>
+              <small>Click on the map to set pickup location.</small>
             </div>
-            <small className="text-muted">Click on the map to set pickup location.</small>
           </div>
         </div>
       </div>
-    </div>
+    </AppLayout>
   );
 };
-
-// Styles object unused since Bootstrap classes are used
-const styles = {};
 
 export default BookingsCreate;
