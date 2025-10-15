@@ -90,6 +90,7 @@ const VehiclesList = () => {
             <th>Registration</th>
             <th>Make & model</th>
             <th>Identifiers</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -118,6 +119,11 @@ const VehiclesList = () => {
                   <span className="primary">Plate: {vehicle.licPlates || '—'}</span>
                   <span className="secondary">VIN: {vehicle.vinNumber || '—'}</span>
                 </div>
+              </td>
+              <td>
+                <Link className="pill-button" to={`/vehicles/${vehicle._id}`}>
+                  Manage
+                </Link>
               </td>
             </tr>
           ))}

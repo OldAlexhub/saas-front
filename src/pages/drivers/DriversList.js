@@ -104,6 +104,7 @@ const DriversList = () => {
             <th>Contact</th>
             <th>License</th>
             <th>Compliance</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -132,6 +133,11 @@ const DriversList = () => {
                   <span className="primary">{expiryBadge(driver.dlExpiry)}</span>
                   <span className="secondary">CBI: {formatDate(driver.cbiExpiry)} • DOT: {formatDate(driver.dotExpiry)}</span>
                 </div>
+              </td>
+              <td>
+                <Link className="pill-button" to={`/drivers/${driver._id}`}>
+                  Manage
+                </Link>
               </td>
             </tr>
           ))}

@@ -225,6 +225,13 @@ a:hover {
   flex-wrap: wrap;
 }
 
+.action-stack {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .app-main {
   padding: 32px 40px 48px;
   flex: 1;
@@ -321,6 +328,38 @@ a:hover {
 .panel-header h3 {
   margin: 0;
   font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.panel-body {
+  display: grid;
+  gap: 18px;
+}
+
+.panel-footer {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+}
+
+.meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+}
+
+.meta-grid dt {
+  margin: 0 0 4px;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.meta-grid dd {
+  margin: 0;
   font-weight: 600;
 }
 
@@ -621,6 +660,14 @@ a:hover {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 18px 20px;
+}
+
+.form-grid.two-column {
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.form-grid .full-width {
+  grid-column: 1 / -1;
 }
 
 .form-section {

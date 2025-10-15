@@ -78,6 +78,7 @@ const BookingsList = () => {
             <th>Pickup</th>
             <th>Status</th>
             <th>Assignment</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -111,6 +112,15 @@ const BookingsList = () => {
                   <span className="primary">Driver: {booking.driverName || booking.driverId || 'Unassigned'}</span>
                   <span className="secondary">Cab #{booking.cabNumber || booking.assignedCab || '—'}</span>
                 </div>
+              </td>
+              <td>
+                {booking._id ? (
+                  <Link className="pill-button" to={`/bookings/${booking._id}`}>
+                    Manage
+                  </Link>
+                ) : (
+                  <span className="secondary">—</span>
+                )}
               </td>
             </tr>
           ))}

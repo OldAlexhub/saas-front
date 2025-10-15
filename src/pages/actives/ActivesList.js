@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import AppLayout from '../../components/AppLayout';
 import { listActives, updateAvailability, updateStatus } from '../../services/activeService';
 
@@ -78,9 +79,15 @@ const ActivesList = () => {
   };
 
   const headerActions = (
-    <button type="button" className="btn btn-ghost" onClick={fetchActives} disabled={refreshing}>
-      {refreshing ? 'Refreshing…' : 'Refresh roster'}
-    </button>
+    <div className="action-stack">
+      <button type="button" className="btn btn-ghost" onClick={fetchActives} disabled={refreshing}>
+        {refreshing ? 'Refreshing…' : 'Refresh roster'}
+      </button>
+      <Link to="/actives/new" className="btn btn-primary">
+        <span className="icon">＋</span>
+        Activate driver
+      </Link>
+    </div>
   );
 
   const renderBody = () => {
@@ -132,6 +139,9 @@ const ActivesList = () => {
               </td>
               <td>
                 <div className="pill-group">
+                  <Link className="pill-button" to={`/actives/${active._id}`}>
+                    Manage
+                  </Link>
                   <button
                     type="button"
                     className="pill-button"

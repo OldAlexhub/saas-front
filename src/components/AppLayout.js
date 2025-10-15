@@ -16,6 +16,12 @@ const Icon = ({ children }) => (
 );
 
 const icons = {
+  admins: (
+    <Icon>
+      <path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Z" />
+      <path d="M3 22a9 9 0 0 1 18 0" />
+    </Icon>
+  ),
   dashboard: (
     <Icon>
       <path d="M4 4h7v10H4z" />
@@ -83,6 +89,7 @@ const icons = {
 
 const navLinks = [
   { to: '/', label: 'Dashboard', icon: icons.dashboard },
+  { to: '/admins', label: 'Admin approvals', icon: icons.admins },
   { to: '/drivers', label: 'Drivers', icon: icons.drivers },
   { to: '/drivers/new', label: 'Add Driver', icon: icons.create },
   { to: '/vehicles', label: 'Vehicles', icon: icons.vehicles },
