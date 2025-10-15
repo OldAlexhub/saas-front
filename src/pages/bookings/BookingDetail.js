@@ -1,0 +1,500 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import AppLayout from '../../components/AppLayout';
+import {
+  assignBooking,
+  cancelBooking,
+  changeStatus,
+  getBooking,
+  updateBooking,
+} from '../../services/bookingService';
+import { listDrivers } from '../../services/driverService';
+import { listVehicles } from '../../services/vehicleService';
+
+const statusOptions = ['Scheduled', 'Assigned', 'Completed', 'Cancelled'];
+
+const BookingDetail = () => {
+  const { id } = useParams();
+
+  const [booking, setBooking] = useState(null);
+  const [form, setForm] = useState({
+    customerName: '',
+    phoneNumber: '',
+    pickupAddress: '',
+    dropoffAddress: '',
+    pickupTime: '',
+    notes: '',
+    fare: '',
+  });
+  const [assignmentMode, setAssignmentMode] = useState('manual');
+  const [assignment, setAssignment] = useState({ driverId: '', cabNumber: '' });
+  const [statusForm, setStatusForm] = useState({ toStatus: '', reason: '', fee: '' });
+  const [drivers, setDrivers] = useState([]);
+  const [vehicles, setVehicles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const [bookingRes, driversRes, vehiclesRes] = await Promise.all([
+          getBooking(id),
+          listDrivers(),
+          listVehicles(),
+        ]);
+        const bookingData = bookingRes.data?.booking || bookingRes.data?.data || bookingRes.data;
+        const driverList =
+          driversRes.data?.drivers || driversRes.data?.results || driversRes.data || [];
+        const vehicleList =
+          vehiclesRes.data?.vehicles || vehiclesRes.data?.results || vehiclesRes.data || [];
+
+        setBooking(bookingData);
+        setForm({
+          customerName: bookingData?.customerName || '',
+          phoneNumber: bookingData?.phoneNumber || '',
+          pickupAddress: bookingData?.pickupAddress || '',
+          dropoffAddress: bookingData?.dropoffAddress || '',
+          pickupTime: bookingData?.pickupTime ? bookingData.pickupTime.substring(0, 16) : '',
+          notes: bookingData?.notes || '',
+          fare: bookingData?.fare?.toString() || '',
+        });
+        setAssignment({
+          driverId: bookingData?.driverId || bookingData?.driver?._id || '',
+          cabNumber: bookingData?.cabNumber || bookingData?.assignedCab || '',
+        });
+        setStatusForm({ toStatus: bookingData?.status || 'Scheduled', reason: '', fee: '' });
+        setDrivers(Array.isArray(driverList) ? driverList : []);
+        setVehicles(Array.isArray(vehicleList) ? vehicleList : []);
+      } catch (err) {
+        const msg = err.response?.data?.message || 'Unable to load booking';
+        setError(msg);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [id]);
+
+  const driverOptions = useMemo(
+    () =>
+      drivers.map((driver) => ({
+        value: driver._id || driver.id,
+        label: `${driver.firstName || ''} ${driver.lastName || ''}`.trim() || driver.email || 'Unnamed driver',
+      })),
+    [drivers],
+  );
+
+  const vehicleOptions = useMemo(
+    () =>
+      vehicles.map((vehicle) => ({
+        value: vehicle.cabNumber || vehicle._id,
+        label: `Cab ${vehicle.cabNumber || vehicle._id?.slice(-4) || ''}`.trim(),
+      })),
+    [vehicles],
+  );
+
+  const handleFormChange = (event) => {
+    const { name, value } = event.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleAssignmentChange = (event) => {
+    const { name, value } = event.target;
+    setAssignment((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleStatusChange = (event) => {
+    const { name, value } = event.target;
+    setStatusForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const submitUpdate = async (event) => {
+    event.preventDefault();
+    setSaving(true);
+    setMessage('');
+    setError('');
+    try {
+      const payload = {
+        ...form,
+        pickupTime: form.pickupTime ? new Date(form.pickupTime).toISOString() : undefined,
+        fare: form.fare ? Number(form.fare) : undefined,
+      };
+      const res = await updateBooking(id, payload);
+      const updated = res.data?.data || res.data?.booking || null;
+      setBooking((prev) => ({
+        ...prev,
+        ...(updated || {}),
+        ...(updated ? {} : payload),
+      }));
+      setMessage('Booking details updated');
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to update booking';
+      setError(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const submitAssignment = async (event) => {
+    event.preventDefault();
+    setSaving(true);
+    setMessage('');
+    setError('');
+    try {
+      if (assignmentMode === 'auto') {
+        const res = await assignBooking(id, { mode: 'auto' });
+        const updated = res.data?.data || res.data?.booking || {};
+        setBooking((prev) => ({ ...prev, ...updated }));
+        setMessage('Assignment queued for auto dispatch');
+      } else {
+        const payload = {
+          driverId: assignment.driverId,
+          cabNumber: assignment.cabNumber,
+        };
+        const res = await assignBooking(id, payload);
+        const updated = res.data?.data || res.data?.booking || {};
+        setBooking((prev) => ({ ...prev, ...updated }));
+        setMessage('Booking assigned to driver');
+      }
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to assign booking';
+      setError(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const submitStatusChange = async (event) => {
+    event.preventDefault();
+    setSaving(true);
+    setMessage('');
+    setError('');
+    try {
+      const payload = {
+        toStatus: statusForm.toStatus,
+        reason: statusForm.reason || undefined,
+        fee: statusForm.fee ? Number(statusForm.fee) : undefined,
+      };
+      const res = await changeStatus(id, payload);
+      const updated = res.data?.data || res.data?.booking || {};
+      setBooking((prev) => ({ ...prev, ...updated }));
+      setMessage('Booking status updated');
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to change status';
+      setError(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const cancel = async () => {
+    setSaving(true);
+    setMessage('');
+    setError('');
+    try {
+      const res = await cancelBooking(id);
+      const updated = res.data?.data || res.data?.booking || {};
+      setBooking((prev) => ({ ...prev, ...updated, status: 'Cancelled' }));
+      setStatusForm((prev) => ({ ...prev, toStatus: 'Cancelled' }));
+      setMessage('Booking cancelled');
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to cancel booking';
+      setError(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const actions = (
+    <Link to="/bookings" className="btn btn-ghost">
+      Back to list
+    </Link>
+  );
+
+  const renderSummary = () => {
+    if (!booking) return null;
+    return (
+      <div className="panel" style={{ marginBottom: '24px' }}>
+        <div className="panel-header">
+          <h3>Booking overview</h3>
+          <span className={`badge ${booking.status === 'Completed' ? 'badge-success' : booking.status === 'Cancelled' ? 'badge-warning' : 'badge-info'}`}>
+            {booking.status}
+          </span>
+        </div>
+        <div className="panel-body">
+          <dl className="meta-grid">
+            <div>
+              <dt>Customer</dt>
+              <dd>{booking.customerName || '—'}</dd>
+            </div>
+            <div>
+              <dt>Phone</dt>
+              <dd>{booking.phoneNumber || '—'}</dd>
+            </div>
+            <div>
+              <dt>Pickup</dt>
+              <dd>{booking.pickupTime ? new Date(booking.pickupTime).toLocaleString() : '—'}</dd>
+            </div>
+            <div>
+              <dt>Pickup address</dt>
+              <dd>{booking.pickupAddress || '—'}</dd>
+            </div>
+            <div>
+              <dt>Drop-off</dt>
+              <dd>{booking.dropoffAddress || '—'}</dd>
+            </div>
+            <div>
+              <dt>Driver</dt>
+              <dd>{booking.driverName || booking.driverId || 'Unassigned'}</dd>
+            </div>
+            <div>
+              <dt>Cab</dt>
+              <dd>{booking.cabNumber || '—'}</dd>
+            </div>
+            <div>
+              <dt>Fare</dt>
+              <dd>{booking.fare ? `$${booking.fare}` : '—'}</dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <AppLayout
+      title={`Booking ${booking?.bookingId || id?.slice(-6) || ''}`.trim()}
+      subtitle="Manage assignment, lifecycle and trip logistics from a single workspace."
+      actions={actions}
+    >
+      <div className="surface">
+        {loading ? (
+          <div className="skeleton" style={{ height: '420px' }} />
+        ) : (
+          <>
+            {message && <div className="feedback success">{message}</div>}
+            {error && <div className="feedback error">{error}</div>}
+            {renderSummary()}
+
+            <div className="form-grid two-column">
+              <section className="panel">
+                <form onSubmit={submitUpdate}>
+                  <div className="panel-header">
+                    <h3>Trip details</h3>
+                  </div>
+                  <div className="panel-body">
+                    <div className="form-grid">
+                      <div>
+                        <label htmlFor="customerName">Customer name</label>
+                        <input
+                          id="customerName"
+                          name="customerName"
+                          type="text"
+                          value={form.customerName}
+                          onChange={handleFormChange}
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="phoneNumber">Phone number</label>
+                        <input
+                          id="phoneNumber"
+                          name="phoneNumber"
+                          type="tel"
+                          value={form.phoneNumber}
+                          onChange={handleFormChange}
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="pickupAddress">Pickup address</label>
+                        <input
+                          id="pickupAddress"
+                          name="pickupAddress"
+                          type="text"
+                          value={form.pickupAddress}
+                          onChange={handleFormChange}
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="dropoffAddress">Drop-off address</label>
+                        <input
+                          id="dropoffAddress"
+                          name="dropoffAddress"
+                          type="text"
+                          value={form.dropoffAddress}
+                          onChange={handleFormChange}
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="pickupTime">Pickup time</label>
+                        <input
+                          id="pickupTime"
+                          name="pickupTime"
+                          type="datetime-local"
+                          value={form.pickupTime}
+                          onChange={handleFormChange}
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="fare">Quoted fare</label>
+                        <input
+                          id="fare"
+                          name="fare"
+                          type="number"
+                          step="0.01"
+                          value={form.fare}
+                          onChange={handleFormChange}
+                        />
+                      </div>
+                      <div className="full-width">
+                        <label htmlFor="notes">Notes</label>
+                        <textarea
+                          id="notes"
+                          name="notes"
+                          rows={3}
+                          value={form.notes}
+                          onChange={handleFormChange}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="panel-footer">
+                    <button type="submit" className="btn btn-primary" disabled={saving}>
+                      Save changes
+                    </button>
+                  </div>
+                </form>
+              </section>
+
+              <section className="panel">
+                <form onSubmit={submitAssignment}>
+                  <div className="panel-header">
+                    <h3>Assignment</h3>
+                  </div>
+                  <div className="panel-body">
+                    <div className="form-grid">
+                      <div className="full-width">
+                        <label htmlFor="assignmentMode">Mode</label>
+                        <select
+                          id="assignmentMode"
+                          value={assignmentMode}
+                          onChange={(e) => setAssignmentMode(e.target.value)}
+                        >
+                          <option value="manual">Manual</option>
+                          <option value="auto">Auto assign</option>
+                        </select>
+                      </div>
+                      {assignmentMode === 'manual' && (
+                        <>
+                          <div>
+                            <label htmlFor="driverId">Driver</label>
+                            <select
+                              id="driverId"
+                              name="driverId"
+                              value={assignment.driverId}
+                              onChange={handleAssignmentChange}
+                            >
+                              <option value="">Select driver…</option>
+                              {driverOptions.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label htmlFor="cabNumber">Cab number</label>
+                            <select
+                              id="cabNumber"
+                              name="cabNumber"
+                              value={assignment.cabNumber}
+                              onChange={handleAssignmentChange}
+                            >
+                              <option value="">Select cab…</option>
+                              {vehicleOptions.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="panel-footer">
+                    <button type="submit" className="btn btn-primary" disabled={saving}>
+                      {assignmentMode === 'auto' ? 'Auto assign' : 'Assign booking'}
+                    </button>
+                  </div>
+                </form>
+
+                <form onSubmit={submitStatusChange} style={{ marginTop: '24px' }}>
+                  <div className="panel-header">
+                    <h3>Status controls</h3>
+                  </div>
+                  <div className="panel-body">
+                    <div className="form-grid">
+                      <div>
+                        <label htmlFor="toStatus">New status</label>
+                        <select
+                          id="toStatus"
+                          name="toStatus"
+                          value={statusForm.toStatus}
+                          onChange={handleStatusChange}
+                        >
+                          {statusOptions.map((status) => (
+                            <option key={status} value={status}>
+                              {status}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label htmlFor="reason">Reason</label>
+                        <input
+                          id="reason"
+                          name="reason"
+                          type="text"
+                          value={statusForm.reason}
+                          onChange={handleStatusChange}
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="fee">Additional fee</label>
+                        <input
+                          id="fee"
+                          name="fee"
+                          type="number"
+                          step="0.01"
+                          value={statusForm.fee}
+                          onChange={handleStatusChange}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="panel-footer">
+                    <div className="pill-group">
+                      <button type="submit" className="btn btn-primary" disabled={saving}>
+                        Update status
+                      </button>
+                      <button type="button" className="btn btn-ghost" onClick={cancel} disabled={saving}>
+                        Cancel booking
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </section>
+            </div>
+          </>
+        )}
+      </div>
+    </AppLayout>
+  );
+};
+
+export default BookingDetail;

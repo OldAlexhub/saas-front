@@ -1,12 +1,21 @@
 import API from './api';
+import { pathWithId, resolvePath } from './endpointHelpers';
 
-// Vehicle service encapsulates API interactions for vehicle resources.
+const VEHICLES_BASE = resolvePath(
+  process.env.REACT_APP_VEHICLES,
+  process.env.REACT_APP_VEHICLES_LIST,
+  process.env.REACT_APP_VEHICLES_ADD,
+  '/vehicles',
+);
+const VEHICLES_LIST = resolvePath(process.env.REACT_APP_VEHICLES_LIST, VEHICLES_BASE, '/vehicles');
+const VEHICLES_ADD = resolvePath(process.env.REACT_APP_VEHICLES_ADD, VEHICLES_BASE, '/vehicles');
+const VEHICLE_ID_TEMPLATE = `${VEHICLES_BASE || '/vehicles'}/:id`;
 
 /**
  * Fetch all vehicles.
  */
 export const listVehicles = () => {
-  return API.get(process.env.REACT_APP_VEHICLES);
+  return API.get(VEHICLES_LIST || '/vehicles');
 };
 
 /**
@@ -14,7 +23,7 @@ export const listVehicles = () => {
  * @param {string} id - Vehicle document id.
  */
 export const getVehicle = (id) => {
-  return API.get(`${process.env.REACT_APP_VEHICLES}/${id}`);
+  return API.get(pathWithId(id, process.env.REACT_APP_VEHICLES_GET, process.env.REACT_APP_VEHICLES_UPDATE, VEHICLE_ID_TEMPLATE));
 };
 
 /**
@@ -23,7 +32,7 @@ export const getVehicle = (id) => {
  * @param {FormData} formData - The form data containing vehicle fields and file.
  */
 export const addVehicle = (formData) => {
-  return API.post(process.env.REACT_APP_VEHICLES, formData, {
+  return API.post(VEHICLES_ADD || '/vehicles', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
 };
@@ -35,7 +44,8 @@ export const addVehicle = (formData) => {
  * @param {FormData} formData - The updated fields as FormData.
  */
 export const updateVehicle = (id, formData) => {
-  return API.put(`${process.env.REACT_APP_VEHICLES}/${id}`, formData, {
+  return API.put(pathWithId(id, process.env.REACT_APP_VEHICLES_UPDATE, process.env.REACT_APP_VEHICLES_GET, VEHICLE_ID_TEMPLATE),
+formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
 };
