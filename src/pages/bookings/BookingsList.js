@@ -11,24 +11,47 @@ const BookingsList = () => {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('All');
+  // Default date range: today (local)
+  const todayIso = (() => {
+    const d = new Date();
+    return d.toISOString().slice(0, 10);
+  })();
+  const [fromDate, setFromDate] = useState(todayIso);
+  const [toDate, setToDate] = useState(todayIso);
+
+  const fetchBookings = async (opts = {}) => {
+    setLoading(true);
+    setError('');
+    try {
+      const params = {};
+      if (status && status !== 'All') params.status = status;
+      if (opts.from !== undefined) params.from = opts.from;
+      if (opts.to !== undefined) params.to = opts.to;
+      // if no opts passed, use fromDate/toDate state (default to today)
+      if (!('from' in opts) && fromDate) {
+        const fromIso = new Date(`${fromDate}T00:00:00`).toISOString();
+        params.from = fromIso;
+      }
+      if (!('to' in opts) && toDate) {
+        const toIso = new Date(`${toDate}T23:59:59.999`).toISOString();
+        params.to = toIso;
+      }
+
+      const res = await listBookings(params);
+      const items = res.data?.bookings || res.data?.results || res.data || [];
+      setBookings(Array.isArray(items) ? items : []);
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to fetch bookings';
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchBookings = async () => {
-      setLoading(true);
-      setError('');
-      try {
-        const res = await listBookings();
-        const items = res.data?.bookings || res.data?.results || res.data || [];
-        setBookings(Array.isArray(items) ? items : []);
-      } catch (err) {
-        const msg = err.response?.data?.message || 'Failed to fetch bookings';
-        setError(msg);
-      } finally {
-        setLoading(false);
-      }
-    };
-
+    // initial load with today's range
     fetchBookings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filteredBookings = useMemo(() => {
@@ -148,6 +171,31 @@ const BookingsList = () => {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div className="search-input" style={{ width: 160 }}>
+                <span className="icon">📅</span>
+                <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+              </div>
+              <div className="search-input" style={{ width: 160 }}>
+                <span className="icon">📅</span>
+                <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+              </div>
+            </div>
+            <button className="btn btn-subtle" type="button" onClick={() => fetchBookings()}>Apply</button>
+            <button
+              className="btn btn-ghost"
+              type="button"
+              onClick={() => {
+                setFromDate('');
+                setToDate('');
+                fetchBookings({ from: undefined, to: undefined });
+              }}
+            >
+              Clear
+            </button>
+          </div>
+
           <select className="filter-select" value={status} onChange={(e) => setStatus(e.target.value)}>
             {statusOptions.map((option) => (
               <option key={option} value={option}>
