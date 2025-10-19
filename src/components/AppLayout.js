@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useRealtime } from '../providers/RealtimeProvider';
 
@@ -151,6 +151,7 @@ const navSections = [
     icon: icons.vehicles,
     items: [
       { to: '/vehicles', label: 'Vehicles', icon: icons.vehicles },
+          { to: '/vehicles/files', label: 'Vehicle files', icon: icons.vehicles, end: true },
       { to: '/vehicles/new', label: 'Add Vehicle', icon: icons.create, end: true },
     ],
   },

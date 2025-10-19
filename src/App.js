@@ -20,6 +20,7 @@ import AppSettings from './pages/settings/AppSettings';
 import CompanySettings from './pages/settings/CompanySettings';
 import DriverMessaging from './pages/settings/DriverMessaging';
 import Signup from './pages/Signup';
+import VehicleFiles from './pages/vehicles/VehicleFiles';
 import VehiclesCreate from './pages/vehicles/VehiclesCreate';
 import VehiclesEdit from './pages/vehicles/VehiclesEdit';
 import VehiclesList from './pages/vehicles/VehiclesList';
@@ -66,6 +67,9 @@ function App() {
       <Route
         path="/vehicles/:id"
         element={token ? <VehiclesEdit /> : <Navigate to="/login" replace />} />
+      <Route
+        path="/vehicles/files"
+        element={token ? <VehicleFiles /> : <Navigate to="/login" replace />} />
       <Route
         path="/actives"
         element={token ? <ActivesList /> : <Navigate to="/login" replace />} />
