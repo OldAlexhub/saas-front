@@ -163,7 +163,8 @@ const ActivesList = () => {
     }
 
     return (
-      <table className="data-table">
+      <div className="table-responsive-stack">
+        <table className="data-table">
         <thead>
           <tr>
             <th>Driver</th>
@@ -180,13 +181,13 @@ const ActivesList = () => {
               pickFirst(active.driver?.name, active.driver?.fullName, active.driver?.email, '—');
             return (
               <tr key={active._id || `${active.driverId}-${active.cabNumber}`}>
-                <td>
+                <td data-label="Driver">
                   <div className="table-stack">
                     <span className="primary">{driverLabel}</span>
                     <span className="secondary">ID: {active.driverId || '—'}</span>
                   </div>
                 </td>
-                <td>
+                <td data-label="Cab">
                   <div className="table-stack">
                     <span className="primary">Cab #{active.cabNumber || '—'}</span>
                     <span className="secondary">
@@ -194,17 +195,17 @@ const ActivesList = () => {
                     </span>
                   </div>
                 </td>
-                <td>
+                <td data-label="Status">
                   <span className={`badge ${active.status === 'Active' ? 'badge-success' : 'badge-warning'}`}>
                     {active.status || 'Inactive'}
                 </span>
               </td>
-              <td>
+              <td data-label="Availability">
                 <span className={`badge ${active.availability === 'Online' ? 'badge-info' : 'badge-warning'}`}>
                   {active.availability || 'Offline'}
                 </span>
               </td>
-              <td>
+              <td data-label="Actions">
                 <div className="pill-group">
                   <Link className="pill-button" to={`/actives/${active._id}`}>
                     Manage
@@ -231,7 +232,8 @@ const ActivesList = () => {
             );
           })}
         </tbody>
-      </table>
+        </table>
+      </div>
     );
   };
 

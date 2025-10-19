@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AppLayout from '../../components/AppLayout';
 import { listBookings } from '../../services/bookingService';
@@ -70,7 +70,8 @@ const BookingsList = () => {
     }
 
     return (
-      <table className="data-table">
+      <div className="table-responsive-stack">
+        <table className="data-table">
         <thead>
           <tr>
             <th>Booking</th>
@@ -84,36 +85,36 @@ const BookingsList = () => {
         <tbody>
           {filteredBookings.map((booking) => (
             <tr key={booking._id || booking.bookingId}>
-              <td>
+              <td data-label="Booking">
                 <div className="table-stack">
                   <span className="primary">#{booking.bookingId || booking._id?.slice(-6)}</span>
                   <span className="secondary">Created {booking.createdAt ? new Date(booking.createdAt).toLocaleString() : '—'}</span>
                 </div>
               </td>
-              <td>
+              <td data-label="Customer">
                 <div className="table-stack">
                   <span className="primary">{booking.customerName || '—'}</span>
                   <span className="secondary">{booking.phoneNumber || 'No phone on file'}</span>
                 </div>
               </td>
-              <td>
+              <td data-label="Pickup">
                 <div className="table-stack">
                   <span className="primary">{booking.pickupTime ? new Date(booking.pickupTime).toLocaleString() : '—'}</span>
                   <span className="secondary">Pickup: {booking.pickupAddress || 'TBD'}</span>
                 </div>
               </td>
-              <td>
+              <td data-label="Status">
                 <span className={`badge ${booking.status === 'Completed' ? 'badge-success' : booking.status === 'Cancelled' ? 'badge-warning' : 'badge-info'}`}>
                   {booking.status || 'Scheduled'}
                 </span>
               </td>
-              <td>
+              <td data-label="Assignment">
                 <div className="table-stack">
                   <span className="primary">Driver: {booking.driverName || booking.driverId || 'Unassigned'}</span>
                   <span className="secondary">Cab #{booking.cabNumber || booking.assignedCab || '—'}</span>
                 </div>
               </td>
-              <td>
+              <td data-label="Actions">
                 {booking._id ? (
                   <Link className="pill-button" to={`/bookings/${booking._id}`}>
                     Manage
@@ -125,7 +126,8 @@ const BookingsList = () => {
             </tr>
           ))}
         </tbody>
-      </table>
+        </table>
+      </div>
     );
   };
 

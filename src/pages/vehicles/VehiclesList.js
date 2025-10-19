@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AppLayout from '../../components/AppLayout';
 import { listVehicles } from '../../services/vehicleService';
@@ -83,7 +83,8 @@ const VehiclesList = () => {
     }
 
     return (
-      <table className="data-table">
+      <div className="table-responsive-stack">
+        <table className="data-table">
         <thead>
           <tr>
             <th>Cab</th>
@@ -96,31 +97,31 @@ const VehiclesList = () => {
         <tbody>
           {filteredVehicles.map((vehicle) => (
             <tr key={vehicle._id}>
-              <td>
+              <td data-label="Cab">
                 <div className="table-stack">
                   <span className="primary">Cab #{vehicle.cabNumber || '—'}</span>
                   <span className="secondary">Year {vehicle.year || '—'} • {vehicle.color || 'No color set'}</span>
                 </div>
               </td>
-              <td>
+              <td data-label="Registration">
                 <div className="table-stack">
                   <span className="primary">{registrationBadge(vehicle.regisExpiry)}</span>
                   <span className="secondary">Expires {formatDate(vehicle.regisExpiry)}</span>
                 </div>
               </td>
-              <td>
+              <td data-label="Make & model">
                 <div className="table-stack">
                   <span className="primary">{vehicle.make || '—'} {vehicle.model || ''}</span>
                   <span className="secondary">Annual inspection: {formatDate(vehicle.annualInspection)}</span>
                 </div>
               </td>
-              <td>
+              <td data-label="Identifiers">
                 <div className="table-stack">
                   <span className="primary">Plate: {vehicle.licPlates || '—'}</span>
                   <span className="secondary">VIN: {vehicle.vinNumber || '—'}</span>
                 </div>
               </td>
-              <td>
+              <td data-label="Actions">
                 <Link className="pill-button" to={`/vehicles/${vehicle._id}`}>
                   Manage
                 </Link>
@@ -128,7 +129,8 @@ const VehiclesList = () => {
             </tr>
           ))}
         </tbody>
-      </table>
+        </table>
+      </div>
     );
   };
 

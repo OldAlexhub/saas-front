@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import AppLayout from '../../components/AppLayout';
 import { listAdmins, updateApproval } from '../../services/adminService';
 
@@ -97,7 +97,8 @@ const AdminApprovals = () => {
     }
 
     return (
-      <table className="data-table">
+      <div className="table-responsive-stack">
+        <table className="data-table">
         <thead>
           <tr>
             <th>Admin</th>
@@ -117,7 +118,7 @@ const AdminApprovals = () => {
                 : 'badge-info';
             return (
               <tr key={admin._id}>
-                <td>
+                <td data-label="Admin">
                   <div className="table-stack">
                     <span className="primary">
                       {admin.firstName} {admin.lastName}
@@ -125,18 +126,18 @@ const AdminApprovals = () => {
                     <span className="secondary">{admin.company || 'No company on file'}</span>
                   </div>
                 </td>
-                <td>
+                <td data-label="Contact">
                   <div className="table-stack">
                     <span className="primary">{admin.email || '—'}</span>
                     <span className="secondary">{admin.phone || 'No phone provided'}</span>
                   </div>
                 </td>
-                <td>
+                <td data-label="Status">
                   <span className={`badge ${badgeClass}`}>
                     {approval === 'yes' ? 'Approved' : approval === 'no' ? 'Rejected' : 'Pending'}
                   </span>
                 </td>
-                <td>
+                <td data-label="Actions">
                   <div className="pill-group">
                     <button
                       type="button"
@@ -160,7 +161,8 @@ const AdminApprovals = () => {
             );
           })}
         </tbody>
-      </table>
+        </table>
+      </div>
     );
   };
 

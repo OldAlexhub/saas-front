@@ -1,31 +1,41 @@
-import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Navigate, Route, Routes } from 'react-router-dom';
 
 // Pages
-import Login from './pages/Login';
-import Signup from './pages/Signup';
+import ActiveManage from './pages/actives/ActiveManage';
+import ActivesList from './pages/actives/ActivesList';
+import AdminApprovals from './pages/admins/AdminApprovals';
+import BookingDetail from './pages/bookings/BookingDetail';
+import BookingsCreate from './pages/bookings/BookingsCreate';
+import BookingsList from './pages/bookings/BookingsList';
 import Dashboard from './pages/Dashboard';
-import DriversList from './pages/drivers/DriversList';
 import DriversCreate from './pages/drivers/DriversCreate';
 import DriversEdit from './pages/drivers/DriversEdit';
-import VehiclesList from './pages/vehicles/VehiclesList';
+import DriversList from './pages/drivers/DriversList';
+import Fares from './pages/Fares';
+import Login from './pages/Login';
+import ReceiptGenerator from './pages/reports/ReceiptGenerator';
+import ReportsBuilder from './pages/reports/ReportsBuilder';
+import AppSettings from './pages/settings/AppSettings';
+import CompanySettings from './pages/settings/CompanySettings';
+import DriverMessaging from './pages/settings/DriverMessaging';
+import Signup from './pages/Signup';
 import VehiclesCreate from './pages/vehicles/VehiclesCreate';
 import VehiclesEdit from './pages/vehicles/VehiclesEdit';
-import ActivesList from './pages/actives/ActivesList';
-import ActiveManage from './pages/actives/ActiveManage';
-import BookingsList from './pages/bookings/BookingsList';
-import BookingsCreate from './pages/bookings/BookingsCreate';
-import BookingDetail from './pages/bookings/BookingDetail';
-import AdminApprovals from './pages/admins/AdminApprovals';
-import Fares from './pages/Fares';
-import ReportsBuilder from './pages/reports/ReportsBuilder';
-import ReceiptGenerator from './pages/reports/ReceiptGenerator';
-import CompanySettings from './pages/settings/CompanySettings';
-import AppSettings from './pages/settings/AppSettings';
-import DriverMessaging from './pages/settings/DriverMessaging';
+import VehiclesList from './pages/vehicles/VehiclesList';
 
 function App() {
-  const token = localStorage.getItem('token');
+  const [token, setToken] = useState(() => localStorage.getItem('token'));
+
+  useEffect(() => {
+    const handleTokenChange = () => setToken(localStorage.getItem('token'));
+    window.addEventListener('storage', handleTokenChange);
+    window.addEventListener('auth-token', handleTokenChange);
+    return () => {
+      window.removeEventListener('storage', handleTokenChange);
+      window.removeEventListener('auth-token', handleTokenChange);
+    };
+  }, []);
 
   return (
     <Routes>

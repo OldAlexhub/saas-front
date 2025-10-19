@@ -1727,6 +1727,55 @@ a:hover {
     padding: 32px 24px;
   }
 
+  /* Improve small-screen auth layout: hide the large illustration and make
+     the card fill the viewport nicely */
+  .auth-illustration {
+    display: none;
+  }
+
+  .auth-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-card {
+    padding: 20px 16px;
+    align-items: stretch;
+    justify-content: flex-start;
+  }
+
+  .auth-card-inner {
+    width: 100%;
+    padding: 20px;
+    border-radius: 14px;
+  }
+
+  .auth-card h1 {
+    text-align: center;
+    font-size: 1.4rem;
+  }
+
+  .auth-card p.lead {
+    text-align: center;
+  }
+
+  /* Make form controls and primary actions easier to tap on mobile */
+  .auth-card form {
+    gap: 12px;
+  }
+
+  .auth-card input,
+  .auth-card select {
+    padding: 14px 12px;
+    font-size: 1rem;
+  }
+
+  .auth-card .btn,
+  .auth-card button {
+    width: 100%;
+    padding: 12px 14px;
+    font-size: 1rem;
+  }
+
   .other-fee-row,
   .other-fee-add {
     grid-template-columns: 1fr;
@@ -1743,6 +1792,160 @@ a:hover {
   .other-fee-row-actions .btn,
   .other-fee-actions .btn {
     width: 100%;
+  }
+}
+
+/* Extra small screens (very narrow phones) */
+@media (max-width: 480px) {
+  .header-titles h1 {
+    font-size: 1.25rem;
+  }
+
+  .app-main {
+    padding: 18px 12px 28px;
+  }
+
+  .auth-card-inner {
+    padding: 16px;
+  }
+
+  .logo-circle {
+    width: 44px;
+    height: 44px;
+    font-size: 1.05rem;
+  }
+}
+
+/* Helper for responsive tables on small screens */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-responsive table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/* Global responsive helpers and refinements */
+@media (max-width: 1024px) {
+  :root {
+    --radius-lg: 16px;
+  }
+
+  .header-titles h1 {
+    font-size: 1.4rem;
+  }
+
+  .app-header {
+    padding: 18px 16px;
+    gap: 12px;
+  }
+
+  .app-main {
+    padding: 20px 16px 32px;
+  }
+
+  .panel,
+  .surface {
+    padding: 18px;
+  }
+
+  .metric-value {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .panel,
+  .surface {
+    padding: 14px;
+  }
+
+  .metric-card {
+    padding: 16px;
+  }
+
+  .header-actions {
+    gap: 8px;
+  }
+
+  /* Make actionable buttons more prominent on touch devices */
+  .btn,
+  button {
+    min-height: 44px;
+    padding: 10px 12px;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Collapse complex grids to single column where appropriate */
+  .grid-two,
+  .metrics-grid,
+  .grid-three {
+    grid-template-columns: 1fr;
+  }
+
+  .panel-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .sidebar-link span {
+    display: inline; /* keep labels visible when sidebar overlays */
+  }
+}
+
+/* Responsive stacking helper: add `responsive-stack` around groups of labels/values
+   and optionally use `data-label` on `td` when converting tables to stacked rows. */
+.responsive-stack {
+  display: grid;
+  gap: 12px;
+}
+
+/* Table stacking helper that works when table cells include data-label attributes.
+   Use by wrapping a table in a container with class `table-responsive-stack`. */
+@media (max-width: 640px) {
+  .table-responsive-stack table {
+    border: 0;
+  }
+
+  .table-responsive-stack thead {
+    display: none;
+  }
+
+  .table-responsive-stack tbody tr {
+    display: block;
+    margin-bottom: 12px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+    padding-bottom: 8px;
+  }
+
+  .table-responsive-stack td {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    align-items: baseline;
+  }
+
+  .table-responsive-stack td::before {
+    content: attr(data-label);
+    color: var(--text-muted);
+    margin-right: 8px;
+    font-weight: 600;
+    display: inline-block;
+    width: 40%;
+  }
+}
+
+/* Utility: make icons-only toolbar buttons larger on touch */
+@media (max-width: 640px) {
+  .action-stack .btn-icon,
+  .header-menu {
+    width: 48px;
+    height: 48px;
   }
 }
 

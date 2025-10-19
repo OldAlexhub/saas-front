@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AppLayout from '../../components/AppLayout';
 import { listDrivers } from '../../services/driverService';
@@ -97,7 +97,8 @@ const DriversList = () => {
     }
 
     return (
-      <table className="data-table">
+      <div className="table-responsive-stack">
+        <table className="data-table">
         <thead>
           <tr>
             <th>Driver</th>
@@ -110,31 +111,31 @@ const DriversList = () => {
         <tbody>
           {filteredDrivers.map((driver) => (
             <tr key={driver._id}>
-              <td>
+              <td data-label="Driver">
                 <div className="table-stack">
                   <span className="primary">{driver.firstName} {driver.lastName}</span>
                   <span className="secondary">DOB: {formatDate(driver.dob)}</span>
                 </div>
               </td>
-              <td>
+              <td data-label="Contact">
                 <div className="table-stack">
                   <span className="primary">{driver.phoneNumber || '—'}</span>
                   <span className="secondary">{driver.email || 'No email on file'}</span>
                 </div>
               </td>
-              <td>
+              <td data-label="License">
                 <div className="table-stack">
                   <span className="primary">{driver.dlNumber || '—'}</span>
                   <span className="secondary">Expires {formatDate(driver.dlExpiry)}</span>
                 </div>
               </td>
-              <td>
+              <td data-label="Compliance">
                 <div className="table-stack">
                   <span className="primary">{expiryBadge(driver.dlExpiry)}</span>
                   <span className="secondary">CBI: {formatDate(driver.cbiExpiry)} • DOT: {formatDate(driver.dotExpiry)}</span>
                 </div>
               </td>
-              <td>
+              <td data-label="Actions">
                 <Link className="pill-button" to={`/drivers/${driver._id}`}>
                   Manage
                 </Link>
@@ -142,7 +143,8 @@ const DriversList = () => {
             </tr>
           ))}
         </tbody>
-      </table>
+        </table>
+      </div>
     );
   };
 
