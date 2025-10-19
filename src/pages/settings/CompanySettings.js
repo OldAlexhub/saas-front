@@ -10,6 +10,11 @@ const defaultForm = {
   website: '',
   logoUrl: '',
   notes: '',
+  dispatchSettings: {
+    maxDistanceMiles: 6,
+    maxCandidates: 20,
+    distanceStepsMiles: '1,2,3,4,5,6',
+  },
 };
 
 const CompanySettings = () => {
@@ -38,6 +43,13 @@ const CompanySettings = () => {
             website: data.website || '',
             logoUrl: data.logoUrl || '',
             notes: data.notes || '',
+            dispatchSettings: {
+              maxDistanceMiles: data.dispatchSettings?.maxDistanceMiles ?? defaultForm.dispatchSettings.maxDistanceMiles,
+              maxCandidates: data.dispatchSettings?.maxCandidates ?? defaultForm.dispatchSettings.maxCandidates,
+              distanceStepsMiles: Array.isArray(data.dispatchSettings?.distanceStepsMiles)
+                ? (data.dispatchSettings.distanceStepsMiles.join(',') )
+                : defaultForm.dispatchSettings.distanceStepsMiles,
+            },
           });
         }
       } catch (err) {
@@ -70,7 +82,26 @@ const CompanySettings = () => {
     setError('');
     setSuccess('');
     try {
-      await updateCompanyProfile(form);
+      // Prepare payload
+      const payload = { ...form };
+      // Parse dispatch settings
+      if (form.dispatchSettings) {
+        const ds = {};
+        const md = Number(form.dispatchSettings.maxDistanceMiles);
+        if (Number.isFinite(md)) ds.maxDistanceMiles = md;
+        const mc = Number(form.dispatchSettings.maxCandidates);
+        if (Number.isFinite(mc)) ds.maxCandidates = mc;
+        const stepsRaw = String(form.dispatchSettings.distanceStepsMiles || '')
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .map(Number)
+          .filter((n) => Number.isFinite(n) && n > 0);
+        ds.distanceStepsMiles = stepsRaw;
+        payload.dispatchSettings = ds;
+      }
+
+      await updateCompanyProfile(payload);
       setSuccess('Company profile updated successfully.');
     } catch (err) {
       const message = err.response?.data?.message || 'Failed to update company profile.';
@@ -180,6 +211,48 @@ const CompanySettings = () => {
                   onChange={handleChange}
                   placeholder="Internal reminders or payment instructions."
                 />
+              </div>
+
+              <div className="panel-section">
+                <h4>Dispatch settings</h4>
+                <p className="panel-subtitle">Controls used for automatic dispatch behavior (radial search).</p>
+                <div className="form-grid">
+                  <div>
+                    <label htmlFor="maxDistanceMiles">Max distance (miles)</label>
+                    <input
+                      id="maxDistanceMiles"
+                      name="dispatchSettings.maxDistanceMiles"
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      value={form.dispatchSettings?.maxDistanceMiles ?? ''}
+                      onChange={handleChange}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="maxCandidates">Max candidates</label>
+                    <input
+                      id="maxCandidates"
+                      name="dispatchSettings.maxCandidates"
+                      type="number"
+                      min="1"
+                      value={form.dispatchSettings?.maxCandidates ?? ''}
+                      onChange={handleChange}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="distanceStepsMiles">Distance steps (miles)</label>
+                  <input
+                    id="distanceStepsMiles"
+                    name="dispatchSettings.distanceStepsMiles"
+                    type="text"
+                    value={form.dispatchSettings?.distanceStepsMiles ?? ''}
+                    onChange={handleChange}
+                    placeholder="Comma-separated e.g. 1,2,3,4"
+                  />
+                  <p className="hint">Comma-separated list of radial search distances in miles. Values will be sanitized.</p>
+                </div>
               </div>
             </div>
 

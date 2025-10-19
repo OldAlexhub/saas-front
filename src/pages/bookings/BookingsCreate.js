@@ -6,6 +6,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import AppLayout from '../../components/AppLayout';
 import { listActives } from '../../services/activeService';
 import { createBooking } from '../../services/bookingService';
+import { getCompanyProfile } from '../../services/companyService';
 import { getFare, listFlatRates } from '../../services/fareService';
 import { getMapboxTileLayer } from '../../utils/mapbox';
 
@@ -15,8 +16,9 @@ import { getMapboxTileLayer } from '../../utils/mapbox';
  * the bookings list.
  */
 const MAPBOX_TOKEN = process.env.REACT_APP_MAPBOX_ACCESS_TOKEN || '';
-const NEARBY_RADIUS_MILES = 10;
-const NEARBY_RADIUS_METERS = NEARBY_RADIUS_MILES * 1609.34;
+const DEFAULT_NEARBY_RADIUS_MILES = 10;
+// initial meters constant kept for backwards compatibility but component will compute runtime value
+const DEFAULT_NEARBY_RADIUS_METERS = DEFAULT_NEARBY_RADIUS_MILES * 1609.34;
 const EARTH_RADIUS_MILES = 3958.8;
 
 const toRadians = (degrees) => (degrees * Math.PI) / 180;
@@ -107,7 +109,9 @@ const BookingsCreate = () => {
   const [nearbyDrivers, setNearbyDrivers] = useState([]);
   const [nearbyLoading, setNearbyLoading] = useState(false);
   const [nearbyError, setNearbyError] = useState('');
+  const [nearbyRadiusMiles, setNearbyRadiusMiles] = useState(DEFAULT_NEARBY_RADIUS_MILES);
   const mapboxTiles = useMemo(() => getMapboxTileLayer(), []);
+  const nearbyRadiusMeters = useMemo(() => Number(nearbyRadiusMiles) * 1609.34, [nearbyRadiusMiles]);
   const tileLayerUrl = mapboxTiles?.url || 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
   const tileLayerAttribution =
     mapboxTiles?.attribution || '&copy; OpenStreetMap contributors';
@@ -132,6 +136,22 @@ const BookingsCreate = () => {
   const hasFlatRates = flatRates.length > 0;
 
   useEffect(() => {
+    let ignore = false;
+    const fetchCompany = async () => {
+      try {
+        const res = await getCompanyProfile();
+        const company = res?.data?.company || res?.data || null;
+        const configured = company?.dispatchSettings?.maxDistanceMiles;
+        if (!ignore && Number.isFinite(Number(configured)) && Number(configured) > 0) {
+          setNearbyRadiusMiles(Number(configured));
+        }
+      } catch (err) {
+        // ignore - keep defaults
+      }
+    };
+
+    fetchCompany();
+
     if (form.fareStrategy === 'flat' && !loadingFlatRates && !hasFlatRates) {
       setForm((prev) => ({ ...prev, fareStrategy: 'meter', flatRateId: '' }));
     }
@@ -548,7 +568,7 @@ const BookingsCreate = () => {
           availability: 'Online',
           lat: pickupPosition.lat,
           lng: pickupPosition.lng,
-          radius: NEARBY_RADIUS_METERS,
+          radius: nearbyRadiusMeters,
         });
 
         const payload =
@@ -1342,8 +1362,8 @@ const fareEstimateNote = useMemo(() => {
                   {pickupPosition && !nearbyLoading && (
                     <span className="nearby-drivers-count">
                       {nearbyDrivers.length > 0
-                        ? `${nearbyDrivers.length} within ${NEARBY_RADIUS_MILES} mi`
-                        : `No drivers within ${NEARBY_RADIUS_MILES} mi`}
+                        ? `${nearbyDrivers.length} within ${nearbyRadiusMiles} mi`
+                        : `No drivers within ${nearbyRadiusMiles} mi`}
                     </span>
                   )}
                 </div>
@@ -1357,7 +1377,7 @@ const fareEstimateNote = useMemo(() => {
                   <p className="nearby-drivers-error">{nearbyError}</p>
                 ) : nearbyDrivers.length === 0 ? (
                   <p className="nearby-drivers-empty">
-                    No online drivers reported within {NEARBY_RADIUS_MILES} miles.
+                    No online drivers reported within {nearbyRadiusMiles} miles.
                   </p>
                 ) : (
                   <ul className="nearby-drivers-list">

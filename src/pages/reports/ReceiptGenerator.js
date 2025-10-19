@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
 import jsPDF from 'jspdf';
+import { useEffect, useMemo, useState } from 'react';
 import AppLayout from '../../components/AppLayout';
 import { listBookings } from '../../services/bookingService';
 import { getCompanyProfile } from '../../services/companyService';
@@ -148,46 +148,136 @@ const ReceiptGenerator = () => {
 
   const buildReceiptPdf = (trip) => {
     const doc = new jsPDF({ unit: 'pt' });
-    const lineHeight = 18;
-    let cursor = 72;
+    const margin = 48;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const contentWidth = pageWidth - margin * 2;
+    let cursor = margin;
 
-    doc.setFontSize(18);
-    doc.text(company.name || 'TaxiOps Transportation LLC', 72, cursor);
-    doc.setFontSize(11);
-    cursor += lineHeight;
+    // drawBody renders the receipt body using current `cursor` and shared vars
+    const drawBody = () => {
+      // Receipt title and metadata
+      doc.setFontSize(13);
+      doc.text(`Receipt — Trip ${trip.id}`, margin, cursor);
+      doc.setFontSize(9);
+      const metaRight = pageWidth - margin;
+      doc.text(`Date: ${formatDateTime(trip.pickup)}`, metaRight, cursor, { align: 'right' });
+      cursor += 16;
+
+      doc.setLineWidth(0.5);
+      doc.line(margin, cursor, pageWidth - margin, cursor);
+      cursor += 12;
+
+      // Trip details
+      doc.setFontSize(10);
+      const leftCol = margin;
+      const rightCol = pageWidth - margin;
+      doc.text(`Customer: ${trip.customer}`, leftCol, cursor);
+      doc.text(`Trip ID: ${trip.id}`, rightCol, cursor, { align: 'right' });
+      cursor += 14;
+      doc.text(`Driver: ${trip.driver}`, leftCol, cursor);
+      doc.text(`Cab: ${trip.cabNumber || '—'}`, rightCol, cursor, { align: 'right' });
+      cursor += 14;
+      doc.text(`Origin: ${trip.origin}`, leftCol, cursor);
+      cursor += 12;
+      doc.text(`Destination: ${trip.destination}`, leftCol, cursor);
+      cursor += 16;
+
+      // Itemized fare area
+      doc.setFontSize(11);
+      doc.text('Fare breakdown', leftCol, cursor);
+      cursor += 12;
+
+      // Example items: base fare and total. If more detail exists in trip, it can be extended.
+      const items = [
+        { label: 'Fare', amount: Number(trip.fare || 0) },
+      ];
+
+      const labelX = leftCol;
+      const amountX = rightCol;
+      for (const it of items) {
+        doc.text(it.label, labelX, cursor);
+        doc.text(`$${it.amount.toFixed(2)}`, amountX, cursor, { align: 'right' });
+        cursor += 14;
+      }
+
+      doc.setLineWidth(0.5);
+      doc.line(labelX, cursor, amountX, cursor);
+      cursor += 8;
+      doc.setFontSize(12);
+      doc.text('Total', labelX, cursor);
+      doc.text(`$${Number(trip.fare || 0).toFixed(2)}`, amountX, cursor, { align: 'right' });
+      cursor += 24;
+
+      doc.setFontSize(10);
+      doc.text('Thank you for riding with us.', leftCol, cursor);
+    };
+
+    // Header: optional logo and company name
+    if (company.logoUrl) {
+      try {
+        // addImage requires dataURL; the browser will fetch and convert when using img element approach is not available.
+        // As a safe fallback, draw name only if image cannot be loaded synchronously.
+        // We'll attempt to load image via an Image and canvas to get data URL.
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = company.logoUrl;
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            const dataUrl = canvas.toDataURL('image/png');
+            const imgWidth = 80;
+            const imgHeight = (img.height / img.width) * imgWidth;
+            doc.addImage(dataUrl, 'PNG', margin, cursor, imgWidth, imgHeight);
+            doc.setFontSize(16);
+            doc.text(company.name || 'TaxiOps Transportation LLC', margin + imgWidth + 12, cursor + imgHeight / 2 + 6);
+            cursor += Math.max(imgHeight, 28) + 8;
+            drawBody();
+            doc.save(`${trip.id || 'receipt'}.pdf`);
+          } catch (e) {
+            // fallback to text header
+            doc.setFontSize(16);
+            doc.text(company.name || 'TaxiOps Transportation LLC', margin, cursor);
+            cursor += 28;
+            drawBody();
+            doc.save(`${trip.id || 'receipt'}.pdf`);
+          }
+        };
+        img.onerror = () => {
+          doc.setFontSize(16);
+          doc.text(company.name || 'TaxiOps Transportation LLC', margin, cursor);
+          cursor += 28;
+          drawBody();
+          doc.save(`${trip.id || 'receipt'}.pdf`);
+        };
+        // return here — saving will happen in callbacks
+        return;
+      } catch (e) {
+        // ignore and draw text header below
+      }
+    }
+
+    doc.setFontSize(16);
+    doc.text(company.name || 'TaxiOps Transportation LLC', margin, cursor);
+    cursor += 20;
+    doc.setFontSize(10);
     if (company.address) {
-      doc.text(company.address, 72, cursor);
-      cursor += lineHeight;
+      doc.text(company.address, margin, cursor);
+      cursor += 14;
     }
-    const contactLine = [company.phone, company.email].filter(Boolean).join(' / ');
+    const contactLine = [company.phone, company.email].filter(Boolean).join(' | ');
     if (contactLine) {
-      doc.text(contactLine, 72, cursor);
-      cursor += lineHeight;
+      doc.text(contactLine, margin, cursor);
+      cursor += 14;
     }
 
-    cursor += lineHeight;
-    doc.setFontSize(14);
-    doc.text(`Receipt for trip ${trip.id}`, 72, cursor);
-    cursor += lineHeight;
-    doc.setFontSize(11);
-    doc.text(`Customer: ${trip.customer}`, 72, cursor);
-    cursor += lineHeight;
-    doc.text(`Pickup: ${formatDateTime(trip.pickup)}`, 72, cursor);
-    cursor += lineHeight;
-    doc.text(`Drop-off: ${formatDateTime(trip.dropoff)}`, 72, cursor);
-    cursor += lineHeight;
-    doc.text(`Origin: ${trip.origin}`, 72, cursor);
-    cursor += lineHeight;
-    doc.text(`Destination: ${trip.destination}`, 72, cursor);
-    cursor += lineHeight;
+    cursor += 8;
 
-    cursor += lineHeight;
-    doc.setFontSize(13);
-    doc.text(`Total fare: $${Number(trip.fare || 0).toFixed(2)}`, 72, cursor);
-    cursor += lineHeight * 2;
-    doc.setFontSize(11);
-    doc.text('Thank you for choosing TaxiOps.', 72, cursor);
-
+    // render body and save
+    drawBody();
     doc.save(`${trip.id || 'receipt'}.pdf`);
   };
 
