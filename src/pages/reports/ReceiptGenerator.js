@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import { useEffect, useMemo, useState } from 'react';
+import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import AppLayout from '../../components/AppLayout';
 import { listBookings } from '../../services/bookingService';
 import { getCompanyProfile } from '../../services/companyService';
@@ -23,6 +24,16 @@ const ReceiptGenerator = () => {
   const [trips, setTrips] = useState([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [mapModalOpen, setMapModalOpen] = useState(false);
+  const [mapModalCoords, setMapModalCoords] = useState({
+    lat: null,
+    lon: null,
+    label: '',
+    pickupLat: null,
+    pickupLon: null,
+    dropoffLat: null,
+    dropoffLon: null,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filters, setFilters] = useState(defaultFilters);
@@ -74,6 +85,11 @@ const ReceiptGenerator = () => {
               dropoff: booking.droppedOffAt || booking.completedAt || null,
               origin: booking.pickupAddress || '-',
               destination: booking.dropoffAddress || '-',
+              // keep coordinates so UI can show lat/lon when address is missing
+              pickupLat: booking.pickupLat ?? booking.pickupLat ?? null,
+              pickupLon: booking.pickupLon ?? booking.pickupLon ?? null,
+              dropoffLat: booking.dropoffLat ?? booking.dropoffLat ?? null,
+              dropoffLon: booking.dropoffLon ?? booking.dropoffLon ?? null,
               driver: booking.driverName || booking.driver?.name || booking.driverId || 'Unassigned',
               driverId: booking.driverId || booking.driver?._id || '',
               cabNumber: booking.cabNumber || booking.assignedCab || '',
@@ -184,6 +200,157 @@ const ReceiptGenerator = () => {
 
   const formatDateTime = (value) => (value ? new Date(value).toLocaleString() : '-');
 
+  const formatAddressOrCoords = (address, lat, lon) => {
+    const addr = typeof address === 'string' ? address.trim() : '';
+    // If we have a sensible address, show it
+    if (addr && addr.length > 3 && !addr.toLowerCase().includes('flagdown')) return addr;
+    // Otherwise, if coordinates exist, show lat,lon with reasonable precision
+    const la = typeof lat === 'number' ? lat : Number(lat);
+    const lo = typeof lon === 'number' ? lon : Number(lon);
+    if (Number.isFinite(la) && Number.isFinite(lo)) return `${la.toFixed(6)}, ${lo.toFixed(6)}`;
+    // fallback to address or dash
+    return addr || '-';
+  };
+
+
+
+  const openTripMapModal = (pickupLat, pickupLon, dropoffLat, dropoffLon, label) => {
+    const pla = Number(pickupLat);
+    const plo = Number(pickupLon);
+    const dla = Number(dropoffLat);
+    const dlo = Number(dropoffLon);
+
+    const hasPickup = Number.isFinite(pla) && Number.isFinite(plo);
+    const hasDropoff = Number.isFinite(dla) && Number.isFinite(dlo);
+
+    const coords = {
+      pickupLat: hasPickup ? pla : null,
+      pickupLon: hasPickup ? plo : null,
+      dropoffLat: hasDropoff ? dla : null,
+      dropoffLon: hasDropoff ? dlo : null,
+      lat: null,
+      lon: null,
+      label: label || '',
+    };
+
+    // If only one point exists, populate lat/lon for single-point preview
+    if (hasPickup && !hasDropoff) {
+      coords.lat = pla;
+      coords.lon = plo;
+      coords.label = coords.label || `Pickup: ${pla.toFixed(6)}, ${plo.toFixed(6)}`;
+    } else if (!hasPickup && hasDropoff) {
+      coords.lat = dla;
+      coords.lon = dlo;
+      coords.label = coords.label || `Dropoff: ${dla.toFixed(6)}, ${dlo.toFixed(6)}`;
+    } else if (hasPickup && hasDropoff) {
+      coords.label = coords.label || `Trip: ${label || ''}`;
+    }
+
+    // debug
+    try {
+      // eslint-disable-next-line no-console
+      console.log('openTripMapModal', coords);
+    } catch (e) {}
+
+    setMapModalCoords(coords);
+    setMapModalOpen(true);
+  };
+
+  const MAPBOX_TOKEN = process.env.REACT_APP_MAPBOX_ACCESS_TOKEN || '';
+
+  const buildMapboxStaticUrl = ({ pickupLat, pickupLon, dropoffLat, dropoffLon, width = 860, height = 420 }) => {
+    const token = (MAPBOX_TOKEN || '').trim();
+    if (!token) return '';
+
+    // helper to format marker
+    const mk = (id, lat, lon, color) => `pin-s-${id}+${color}(${lon},${lat})`;
+
+    let overlay = '';
+    if (pickupLat !== null && pickupLon !== null && dropoffLat !== null && dropoffLon !== null) {
+      overlay = [mk('a', pickupLat, pickupLon, '285AEB'), mk('b', dropoffLat, dropoffLon, 'FF3B30')].join(',');
+      // use auto to fit both markers
+      return `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${encodeURIComponent(overlay)}/auto/${width}x${height}@2x?access_token=${token}`;
+    }
+
+    const lat = pickupLat !== null && pickupLon !== null ? pickupLat : dropoffLat;
+    const lon = pickupLat !== null && pickupLon !== null ? pickupLon : dropoffLon;
+    if (lat === null || lon === null) return '';
+
+    overlay = mk('pin', lat, lon, '285AEB');
+    // center at point with a fixed zoom
+    const zoom = 15;
+    return `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${encodeURIComponent(overlay)}/${lon},${lat},${zoom}/${width}x${height}@2x?access_token=${token}`;
+  };
+
+  // Free OpenStreetMap static map via staticmap.openstreetmap.de
+  const buildOsmStaticUrl = ({ pickupLat, pickupLon, dropoffLat, dropoffLon, width = 860, height = 200, zoom = 14 }) => {
+    // staticmap.openstreetmap.de API: https://staticmap.openstreetmap.de
+    // markers format: lat,lon,markerColor
+    const markers = [];
+    if (pickupLat !== null && pickupLon !== null) markers.push(`${pickupLat},${pickupLon},red-pushpin`);
+    if (dropoffLat !== null && dropoffLon !== null) markers.push(`${dropoffLat},${dropoffLon},blue-pushpin`);
+
+    // center: midpoint if both exist, otherwise the existing point
+    let centerLat = null;
+    let centerLon = null;
+    if (pickupLat !== null && pickupLon !== null && dropoffLat !== null && dropoffLon !== null) {
+      centerLat = (Number(pickupLat) + Number(dropoffLat)) / 2;
+      centerLon = (Number(pickupLon) + Number(dropoffLon)) / 2;
+    } else if (pickupLat !== null && pickupLon !== null) {
+      centerLat = pickupLat;
+      centerLon = pickupLon;
+    } else if (dropoffLat !== null && dropoffLon !== null) {
+      centerLat = dropoffLat;
+      centerLon = dropoffLon;
+    }
+
+    if (centerLat === null || centerLon === null) return '';
+
+    const size = `${Math.min(1280, Math.max(300, Math.round(width)))}x${Math.min(1024, Math.max(120, Math.round(height)))}`;
+    const markerParam = markers.join('|');
+    return `https://staticmap.openstreetmap.de/staticmap.php?center=${encodeURIComponent(`${centerLat},${centerLon}`)}&zoom=${encodeURIComponent(String(zoom))}&size=${encodeURIComponent(size)}&markers=${encodeURIComponent(markerParam)}`;
+  };
+
+  const loadImageAsDataUrl = (url) =>
+    new Promise((resolve) => {
+      if (!url) return resolve(null);
+      try {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth || img.width;
+            canvas.height = img.naturalHeight || img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            const dataUrl = canvas.toDataURL('image/png');
+            resolve(dataUrl);
+          } catch (e) {
+            resolve(null);
+          }
+        };
+        img.onerror = () => resolve(null);
+        img.src = url;
+        // If the image is cached and already complete
+        if (img.complete && img.naturalWidth) {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.naturalWidth;
+          canvas.height = img.naturalHeight;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          resolve(canvas.toDataURL('image/png'));
+        }
+      } catch (e) {
+        resolve(null);
+      }
+    });
+
+  const closeMapModal = () => {
+    setMapModalOpen(false);
+    setMapModalCoords({ lat: null, lon: null, label: '' });
+  };
+
   // Minimal local copy of meter logic to match driver app breakdown
   const safeAmount = (v, fallback = 0) => {
     const n = Number(v);
@@ -267,7 +434,7 @@ const ReceiptGenerator = () => {
     };
   }
 
-  const buildReceiptPdf = (trip) => {
+  const buildReceiptPdf = async (trip) => {
   const doc = new jsPDF({ unit: 'pt' });
   const margin = 48;
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -301,9 +468,9 @@ const ReceiptGenerator = () => {
       doc.text(`Driver: ${trip.driver}`, leftCol, cursor);
       doc.text(`Cab: ${trip.cabNumber || '—'}`, rightCol, cursor, { align: 'right' });
       cursor += 14;
-      doc.text(`Origin: ${trip.origin}`, leftCol, cursor);
-      cursor += 12;
-      doc.text(`Destination: ${trip.destination}`, leftCol, cursor);
+  doc.text(`Origin: ${formatAddressOrCoords(trip.origin, trip.pickupLat, trip.pickupLon)}`, leftCol, cursor);
+  cursor += 12;
+  doc.text(`Destination: ${formatAddressOrCoords(trip.destination, trip.dropoffLat, trip.dropoffLon)}`, leftCol, cursor);
       cursor += 16;
 
   // Itemized fare area (always show breakdown fields even if zero)
@@ -384,52 +551,29 @@ const ReceiptGenerator = () => {
     // Header: optional logo and company name
     if (company.logoUrl) {
       try {
-        // addImage requires dataURL; the browser will fetch and convert when using img element approach is not available.
-        // As a safe fallback, draw name only if image cannot be loaded synchronously.
-        // We'll attempt to load image via an Image and canvas to get data URL.
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.src = company.logoUrl;
-          img.onload = () => {
-          try {
-            const canvas = document.createElement('canvas');
-            canvas.width = img.width;
-            canvas.height = img.height;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0);
-            const dataUrl = canvas.toDataURL('image/png');
-            const imgWidth = 80;
-            const imgHeight = (img.height / img.width) * imgWidth;
-            doc.addImage(dataUrl, 'PNG', margin, cursor, imgWidth, imgHeight);
-            doc.setFontSize(16);
-            // center company name even when logo is present
-            const centerX = pageWidth / 2;
-            doc.text(company.name || 'TaxiOps Transportation LLC', centerX, cursor + imgHeight / 2 + 6, { align: 'center' });
-            cursor += Math.max(imgHeight, 28) + 8;
-            drawBody();
-            doc.save(`${trip.id || 'receipt'}.pdf`);
-          } catch (e) {
-            // fallback to text header
-            doc.setFontSize(16);
-            const centerX = pageWidth / 2;
-            doc.text(company.name || 'TaxiOps Transportation LLC', centerX, cursor, { align: 'center' });
-            cursor += 28;
-            drawBody();
-            doc.save(`${trip.id || 'receipt'}.pdf`);
-          }
-        };
-        img.onerror = () => {
+        const logoData = await loadImageAsDataUrl(company.logoUrl);
+        if (logoData) {
+          const imgWidth = 80;
+          // try to get aspect ratio from an Image
+          const tmpImg = new Image();
+          tmpImg.src = logoData;
+          const imgHeight = tmpImg.height && tmpImg.width ? (tmpImg.height / tmpImg.width) * imgWidth : 28;
+          doc.addImage(logoData, 'PNG', margin, cursor, imgWidth, imgHeight);
+          doc.setFontSize(16);
+          const centerX = pageWidth / 2;
+          doc.text(company.name || 'TaxiOps Transportation LLC', centerX, cursor + imgHeight / 2 + 6, { align: 'center' });
+          cursor += Math.max(imgHeight, 28) + 8;
+        } else {
           doc.setFontSize(16);
           const centerX = pageWidth / 2;
           doc.text(company.name || 'TaxiOps Transportation LLC', centerX, cursor, { align: 'center' });
           cursor += 28;
-          drawBody();
-          doc.save(`${trip.id || 'receipt'}.pdf`);
-        };
-        // return here — saving will happen in callbacks
-        return;
+        }
       } catch (e) {
-        // ignore and draw text header below
+        doc.setFontSize(16);
+        const centerX = pageWidth / 2;
+        doc.text(company.name || 'TaxiOps Transportation LLC', centerX, cursor, { align: 'center' });
+        cursor += 28;
       }
     }
 
@@ -450,14 +594,63 @@ const ReceiptGenerator = () => {
 
     cursor += 8;
 
-    // render body and save
+    // render body
     drawBody();
+
+    // Try to embed a small map centered at the bottom of the receipt
+    try {
+      const pLat = trip.pickupLat ?? null;
+      const pLon = trip.pickupLon ?? null;
+      const dLat = trip.dropoffLat ?? null;
+      const dLon = trip.dropoffLon ?? null;
+      if ((pLat !== null && pLon !== null) || (dLat !== null && dLon !== null)) {
+        let mapData = null;
+        try {
+          const osmUrl = buildOsmStaticUrl({ pickupLat: pLat, pickupLon: pLon, dropoffLat: dLat, dropoffLon: dLon, width: 600, height: 120, zoom: 13 });
+          mapData = await loadImageAsDataUrl(osmUrl);
+        } catch (e) {
+          mapData = null;
+        }
+        if (!mapData && (MAPBOX_TOKEN || '').trim()) {
+          try {
+            const mbUrl = buildMapboxStaticUrl({ pickupLat: pLat, pickupLon: pLon, dropoffLat: dLat, dropoffLon: dLon, width: 700, height: 140 });
+            mapData = await loadImageAsDataUrl(mbUrl);
+          } catch (e) {
+            mapData = null;
+          }
+        }
+
+        if (mapData) {
+          try {
+            const mapWidth = Math.min(pageWidth - margin * 2, 500);
+            const mapHeight = 90;
+            const x = (pageWidth - mapWidth) / 2;
+            // place map near bottom of page with small margin
+            const y = doc.internal.pageSize.getHeight() - margin - mapHeight;
+            doc.addImage(mapData, 'PNG', x, y, mapWidth, mapHeight);
+          } catch (e) {
+            // ignore map embed
+          }
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+
     doc.save(`${trip.id || 'receipt'}.pdf`);
   };
 
-  const downloadReceipts = (targetTrips) => {
+  const downloadReceipts = async (targetTrips) => {
     if (!Array.isArray(targetTrips) || !targetTrips.length) return;
-    targetTrips.forEach((trip) => buildReceiptPdf(trip));
+    for (const trip of targetTrips) {
+      try {
+        // sequentially await each PDF build/save so dialogs and image loads don't collide
+        // eslint-disable-next-line no-await-in-loop
+        await buildReceiptPdf(trip);
+      } catch (e) {
+        // ignore and continue to next
+      }
+    }
   };
 
   const exportFilteredToCsv = () => {
@@ -480,8 +673,8 @@ const ReceiptGenerator = () => {
       trip.customer ?? '',
       formatDateTime(trip.pickup),
       formatDateTime(trip.dropoff),
-      trip.origin ?? '',
-      trip.destination ?? '',
+      formatAddressOrCoords(trip.origin, trip.pickupLat, trip.pickupLon),
+      formatAddressOrCoords(trip.destination, trip.dropoffLat, trip.dropoffLon),
       Number(trip.fare || 0).toFixed(2),
     ]);
     const csvLines = [headers, ...rows].map((line) =>
@@ -682,19 +875,35 @@ const ReceiptGenerator = () => {
                     <td>{trip.customer}</td>
                     <td>{formatDateTime(trip.pickup)}</td>
                     <td>{formatDateTime(trip.dropoff)}</td>
-                    <td>{trip.origin}</td>
-                    <td>{trip.destination}</td>
+                    <td>{formatAddressOrCoords(trip.origin, trip.pickupLat, trip.pickupLon)}</td>
+                    <td>{formatAddressOrCoords(trip.destination, trip.dropoffLat, trip.dropoffLon)}</td>
                     <td style={{ textAlign: 'right' }}>
                       {Number(trip.fare || 0).toFixed(2)}
                     </td>
                     <td style={{ textAlign: 'right' }}>
-                      <button
-                        type="button"
-                        className="btn btn-ghost"
-                        onClick={() => buildReceiptPdf(trip)}
-                      >
-                        PDF
-                      </button>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                        <button
+                          type="button"
+                          className="btn btn-ghost"
+                          onClick={async () => {
+                            try {
+                              await buildReceiptPdf(trip);
+                            } catch (e) {
+                              // ignore
+                            }
+                          }}
+                        >
+                          PDF
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-subtle"
+                          onClick={() => openTripMapModal(trip.pickupLat, trip.pickupLon, trip.dropoffLat, trip.dropoffLon, `${trip.id}`)}
+                          disabled={!(Number.isFinite(Number(trip.pickupLat)) && Number.isFinite(Number(trip.pickupLon))) && !(Number.isFinite(Number(trip.dropoffLat)) && Number.isFinite(Number(trip.dropoffLon)))}
+                        >
+                          Map
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -745,6 +954,162 @@ const ReceiptGenerator = () => {
           </div>
         </div>
       </div>
+        {/* Map preview modal */}
+        {mapModalOpen && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 2000,
+            }}
+            onClick={closeMapModal}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: '90%',
+                maxWidth: '860px',
+                height: '70vh',
+                background: '#fff',
+                borderRadius: '8px',
+                overflow: 'hidden',
+                boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
+                display: 'flex',
+                flexDirection: 'column',
+              }}
+            >
+              <div style={{ padding: '8px 12px', borderBottom: '1px solid #e6edf3', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+                <div style={{ fontWeight: 600 }}>{mapModalCoords.label}</div>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  {mapModalCoords.pickupLat !== null && mapModalCoords.pickupLon !== null && mapModalCoords.dropoffLat !== null && mapModalCoords.dropoffLon !== null ? (
+                    <a
+                      className="btn btn-ghost"
+                      href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(`${mapModalCoords.pickupLat},${mapModalCoords.pickupLon}`)}&destination=${encodeURIComponent(`${mapModalCoords.dropoffLat},${mapModalCoords.dropoffLon}`)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open in Google Maps
+                    </a>
+                  ) : mapModalCoords.lat !== null && mapModalCoords.lon !== null ? (
+                    <a
+                      className="btn btn-ghost"
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${mapModalCoords.lat},${mapModalCoords.lon}`)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open in Google Maps
+                    </a>
+                  ) : null}
+                  <button type="button" className="btn btn-ghost" onClick={closeMapModal}>
+                    Close
+                  </button>
+                </div>
+              </div>
+              {
+                // Prefer a free interactive OpenStreetMap (Leaflet) preview when coordinates exist.
+                (Number.isFinite(Number(mapModalCoords.pickupLat)) || Number.isFinite(Number(mapModalCoords.dropoffLat))) ? (
+                  (() => {
+                    const pickupExists = Number.isFinite(Number(mapModalCoords.pickupLat)) && Number.isFinite(Number(mapModalCoords.pickupLon));
+                    const dropoffExists = Number.isFinite(Number(mapModalCoords.dropoffLat)) && Number.isFinite(Number(mapModalCoords.dropoffLon));
+
+                    // Fit bounds helper
+                    function FitBounds({ points }) {
+                      const map = useMap();
+                      useEffect(() => {
+                        if (!map || !points || !points.length) return;
+                        try {
+                          if (points.length === 1) {
+                            map.setView(points[0], 15);
+                          } else {
+                            const latlngs = points.map((p) => [p.lat, p.lon]);
+                            map.fitBounds(latlngs, { padding: [40, 40] });
+                          }
+                        } catch (e) {
+                          // ignore
+                        }
+                      }, [map, points]);
+                      return null;
+                    }
+
+                    const points = [];
+                    if (pickupExists) points.push({ lat: Number(mapModalCoords.pickupLat), lon: Number(mapModalCoords.pickupLon), label: 'Pickup' });
+                    if (dropoffExists) points.push({ lat: Number(mapModalCoords.dropoffLat), lon: Number(mapModalCoords.dropoffLon), label: 'Dropoff' });
+
+                    const center = points.length ? { lat: points[0].lat, lon: points[0].lon } : { lat: 28.2919557, lon: -81.4075713 };
+
+                    return (
+                      <div style={{ width: '100%', height: '100%' }}>
+                        <MapContainer center={[center.lat, center.lon]} zoom={13} style={{ width: '100%', height: '100%' }}>
+                          <TileLayer
+                            attribution='&copy; OpenStreetMap contributors'
+                            url='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+                          />
+                          <FitBounds points={points} />
+                          {points.map((p, idx) => (
+                            <Marker key={idx} position={[p.lat, p.lon]}>
+                              <Popup>{p.label}</Popup>
+                            </Marker>
+                          ))}
+                        </MapContainer>
+                      </div>
+                    );
+                  })()
+                ) : (
+                  // If no coords, fall back to Mapbox static image when available, otherwise Google iframe
+                  (MAPBOX_TOKEN || '').trim() ? (
+                    (() => {
+                      const src = buildMapboxStaticUrl({
+                        pickupLat: mapModalCoords.pickupLat,
+                        pickupLon: mapModalCoords.pickupLon,
+                        dropoffLat: mapModalCoords.dropoffLat,
+                        dropoffLon: mapModalCoords.dropoffLon,
+                        width: 860,
+                        height: 420,
+                      });
+                      return src ? (
+                        <div style={{ width: '100%', height: '100%', background: '#f6fafc', display: 'flex', flexDirection: 'column' }}>
+                          <img
+                            alt={mapModalCoords.label || 'Map preview'}
+                            src={src}
+                            loading="lazy"
+                            style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', background: '#e9f2fb' }}
+                          />
+                          <div style={{ padding: '6px 10px', borderTop: '1px solid #eef3f8', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                            <a className="btn btn-ghost" href={src} target="_blank" rel="noreferrer">Open in Mapbox</a>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ padding: 24 }}>No map preview available for this trip.</div>
+                      );
+                    })()
+                  ) : (
+                    <iframe
+                      title="map-preview"
+                      src={
+                        // prefer single point embed: pickup first, then dropoff
+                        mapModalCoords.pickupLat !== null && mapModalCoords.pickupLon !== null
+                          ? `https://www.google.com/maps?q=${encodeURIComponent(`${mapModalCoords.pickupLat},${mapModalCoords.pickupLon}`)}&z=16&output=embed`
+                          : mapModalCoords.dropoffLat !== null && mapModalCoords.dropoffLon !== null
+                          ? `https://www.google.com/maps?q=${encodeURIComponent(`${mapModalCoords.dropoffLat},${mapModalCoords.dropoffLon}`)}&z=16&output=embed`
+                          : mapModalCoords.lat !== null && mapModalCoords.lon !== null
+                          ? `https://www.google.com/maps?q=${encodeURIComponent(`${mapModalCoords.lat},${mapModalCoords.lon}`)}&z=16&output=embed`
+                          : ''
+                      }
+                      style={{ border: 0, width: '100%', height: '100%' }}
+                      loading="lazy"
+                    />
+                  )
+                )
+              }
+            </div>
+          </div>
+        )}
     </AppLayout>
   );
 };
