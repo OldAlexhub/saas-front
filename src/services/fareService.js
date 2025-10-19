@@ -1,26 +1,25 @@
 import API from './api';
 import { resolvePath } from './endpointHelpers';
 
-const FARES_BASE = resolvePath(
-  process.env.REACT_APP_FARES,
-  process.env.REACT_APP_FARES_CREATE,
-  process.env.REACT_APP_FARES_UPDATE,
-  '/fares',
-);
-const FARE_CREATE = resolvePath(process.env.REACT_APP_FARES_CREATE, FARES_BASE, '/fares');
-const FARE_UPDATE = resolvePath(process.env.REACT_APP_FARES_UPDATE, FARES_BASE, '/fares');
-const FARE_CURRENT = resolvePath(
-  process.env.REACT_APP_FARES_CURRENT,
-  process.env.REACT_APP_FARE_CURRENT,
-  `${FARES_BASE || '/fares'}/current`,
+const FARE_BASE_PATH = resolvePath(process.env.REACT_APP_FARES_ADD, '/fares');
+const FARE_ADD_PATH = resolvePath(process.env.REACT_APP_FARES_ADD, FARE_BASE_PATH, '/fares');
+const FARE_UPDATE_PATH = resolvePath(process.env.REACT_APP_FARES_UPDATE, FARE_BASE_PATH, '/fares');
+const FARE_GET_PATH = resolvePath(
+  process.env.REACT_APP_FARES_GET,
+  `${FARE_BASE_PATH || '/fares'}/current`,
   '/fares/current',
+);
+const FLAT_RATE_BASE = resolvePath(
+  process.env.REACT_APP_FLAT_RATES_PATH,
+  `${FARE_BASE_PATH || '/fares'}/flatrates`,
+  '/fares/flatrates',
 );
 
 /**
  * Get the current fare configuration.
  */
 export const getFare = () => {
-  return API.get(FARE_CURRENT || '/fares/current');
+  return API.get(FARE_GET_PATH || '/fares/current');
 };
 
 /**
@@ -28,7 +27,7 @@ export const getFare = () => {
  * @param {Object} data - Contains farePerMile, extraPass, waitTimePerMinute.
  */
 export const addFare = (data) => {
-  return API.post(FARE_CREATE || '/fares', data);
+  return API.post(FARE_ADD_PATH || '/fares', data);
 };
 
 /**
@@ -36,7 +35,31 @@ export const addFare = (data) => {
  * @param {Object} data - Partial fields to update.
  */
 export const updateFare = (data) => {
-  return API.put(FARE_UPDATE || '/fares', data);
+  return API.put(FARE_UPDATE_PATH || '/fares', data);
 };
 
-export default { getFare, addFare, updateFare };
+export const listFlatRates = () => {
+  return API.get(FLAT_RATE_BASE || '/fares/flatrates');
+};
+
+export const createFlatRate = (data) => {
+  return API.post(FLAT_RATE_BASE || '/fares/flatrates', data);
+};
+
+export const updateFlatRate = (id, data) => {
+  return API.put(`${FLAT_RATE_BASE || '/fares/flatrates'}/${id}`, data);
+};
+
+export const deleteFlatRate = (id) => {
+  return API.delete(`${FLAT_RATE_BASE || '/fares/flatrates'}/${id}`);
+};
+
+export default {
+  getFare,
+  addFare,
+  updateFare,
+  listFlatRates,
+  createFlatRate,
+  updateFlatRate,
+  deleteFlatRate,
+};

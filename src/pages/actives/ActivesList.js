@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
-import {
-  listActives,
-  updateAvailability,
-  updateStatus,
-} from '../../services/activeService';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+
+import AppLayout from '../../components/AppLayout';
+import { listActives, updateAvailability, updateStatus } from '../../services/activeService';
+
+const pickFirst = (...values) => values.find((value) => value !== undefined && value !== null && value !== '');
 const splitDriverName = (driver) => {
   const rawName = pickFirst(driver?.name, driver?.fullName);
   if (!rawName) return { first: '', last: '' };

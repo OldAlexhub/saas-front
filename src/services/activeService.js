@@ -1,24 +1,37 @@
 import API from './api';
 import { pathWithId, resolvePath } from './endpointHelpers';
 
-const ACTIVES_BASE = resolvePath(
-  process.env.REACT_APP_ACTIVES,
-  process.env.REACT_APP_ACTIVES_LIST,
+const ACTIVE_LIST_PATH = resolvePath(process.env.REACT_APP_ACTIVES_LIST, '/actives');
+const ACTIVE_ADD_PATH = resolvePath(
   process.env.REACT_APP_ACTIVES_ADD,
+  ACTIVE_LIST_PATH,
   '/actives',
 );
-const ACTIVES_LIST = resolvePath(process.env.REACT_APP_ACTIVES_LIST, ACTIVES_BASE, '/actives');
-const ACTIVES_ADD = resolvePath(process.env.REACT_APP_ACTIVES_ADD, ACTIVES_BASE, '/actives');
-const ACTIVE_ID_TEMPLATE = `${ACTIVES_BASE || '/actives'}/:id`;
-const ACTIVE_STATUS_TEMPLATE = `${ACTIVE_ID_TEMPLATE}/status`;
-const ACTIVE_AVAILABILITY_TEMPLATE = `${ACTIVE_ID_TEMPLATE}/availability`;
+const ACTIVE_ID_TEMPLATE = resolvePath(
+  process.env.REACT_APP_ACTIVES_GET,
+  process.env.REACT_APP_ACTIVES_UPDATE,
+  `${ACTIVE_LIST_PATH || '/actives'}/:id`,
+  '/actives/:id',
+);
+const ACTIVE_STATUS_TEMPLATE = resolvePath(
+  process.env.REACT_APP_ACTIVES_STATUS,
+  `${ACTIVE_ID_TEMPLATE || '/actives/:id'}/status`,
+  `${ACTIVE_LIST_PATH || '/actives'}/:id/status`,
+  '/actives/:id/status',
+);
+const ACTIVE_AVAILABILITY_TEMPLATE = resolvePath(
+  process.env.REACT_APP_ACTIVES_AVAILABILITY,
+  `${ACTIVE_ID_TEMPLATE || '/actives/:id'}/availability`,
+  `${ACTIVE_LIST_PATH || '/actives'}/:id/availability`,
+  '/actives/:id/availability',
+);
 
 /**
  * List active drivers with optional filters.
  * @param {Object} params - Query parameters like status, availability, lat, lng, radius.
  */
 export const listActives = (params = {}) => {
-  return API.get(ACTIVES_LIST || '/actives', { params });
+  return API.get(ACTIVE_LIST_PATH || '/actives', { params });
 };
 
 /**
@@ -26,7 +39,14 @@ export const listActives = (params = {}) => {
  * @param {string} id - Active document id.
  */
 export const getActive = (id) => {
-  return API.get(pathWithId(id, process.env.REACT_APP_ACTIVES_GET, process.env.REACT_APP_ACTIVES_UPDATE, ACTIVE_ID_TEMPLATE));
+  return API.get(
+      pathWithId(
+        id,
+        process.env.REACT_APP_ACTIVES_GET,
+        process.env.REACT_APP_ACTIVES_UPDATE,
+        ACTIVE_ID_TEMPLATE,
+      ) || `/actives/${id}`,
+  );
 };
 
 /**
@@ -34,7 +54,7 @@ export const getActive = (id) => {
  * @param {Object} data - Active fields.
  */
 export const addActive = (data) => {
-  return API.post(ACTIVES_ADD || '/actives', data);
+  return API.post(ACTIVE_ADD_PATH || '/actives', data);
 };
 
 /**
@@ -43,7 +63,15 @@ export const addActive = (data) => {
  * @param {Object} data - Fields to update.
  */
 export const updateActive = (id, data) => {
-  return API.put(pathWithId(id, process.env.REACT_APP_ACTIVES_UPDATE, process.env.REACT_APP_ACTIVES_GET, ACTIVE_ID_TEMPLATE), data);
+  return API.put(
+    pathWithId(
+      id,
+      process.env.REACT_APP_ACTIVES_UPDATE,
+      process.env.REACT_APP_ACTIVES_GET,
+      ACTIVE_ID_TEMPLATE,
+    ) || `/actives/${id}`,
+    data,
+  );
 };
 
 /**
@@ -57,7 +85,7 @@ export const updateStatus = (id, status) => {
       id,
       process.env.REACT_APP_ACTIVES_STATUS,
       ACTIVE_STATUS_TEMPLATE,
-    ),
+    ) || `/actives/${id}/status`,
     { status },
   );
 };
@@ -73,7 +101,7 @@ export const updateAvailability = (id, availability) => {
       id,
       process.env.REACT_APP_ACTIVES_AVAILABILITY,
       ACTIVE_AVAILABILITY_TEMPLATE,
-    ),
+    ) || `/actives/${id}/availability`,
     { availability },
   );
 };

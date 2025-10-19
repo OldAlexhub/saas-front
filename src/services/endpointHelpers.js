@@ -1,6 +1,6 @@
 const HTTP_PATTERN = /^https?:\/\//i;
 
-const normalizeEndpoint = (path) => {
+export const normalizeEndpoint = (path) => {
   if (!path) return '';
   if (HTTP_PATTERN.test(path)) {
     return path.replace(/\/+$/, '');

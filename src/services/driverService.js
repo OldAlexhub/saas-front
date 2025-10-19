@@ -1,21 +1,40 @@
 import API from './api';
-import { pathWithId, resolvePath } from './endpointHelpers';
+import { normalizeEndpoint, pathWithId, resolvePath } from './endpointHelpers';
 
-const DRIVERS_BASE = resolvePath(
-  process.env.REACT_APP_DRIVERS,
-  process.env.REACT_APP_DRIVERS_LIST,
+const DRIVER_LIST_PATH = resolvePath(process.env.REACT_APP_DRIVERS_LIST, '/drivers');
+const DRIVER_ADD_PATH = resolvePath(
   process.env.REACT_APP_DRIVERS_ADD,
+  DRIVER_LIST_PATH,
   '/drivers',
 );
-const DRIVERS_LIST = resolvePath(process.env.REACT_APP_DRIVERS_LIST, DRIVERS_BASE, '/drivers');
-const DRIVERS_ADD = resolvePath(process.env.REACT_APP_DRIVERS_ADD, DRIVERS_BASE, '/drivers');
-const DRIVER_ID_TEMPLATE = `${DRIVERS_BASE || '/drivers'}/:id`;
+const DRIVER_ID_TEMPLATE = resolvePath(
+  process.env.REACT_APP_DRIVERS_BY_ID,
+  process.env.REACT_APP_DRIVERS_UPDATE,
+  `${DRIVER_LIST_PATH || '/drivers'}/:id`,
+  '/drivers/:id',
+);
+const DRIVER_APP_CREDENTIALS_TEMPLATE = resolvePath(
+  process.env.REACT_APP_DRIVERS_SET_APP_CREDENTIALS,
+  `${DRIVER_ID_TEMPLATE || '/drivers/:id'}/app-credentials`,
+  `${DRIVER_LIST_PATH || '/drivers'}/:id/app-credentials`,
+  '/drivers/:id/app-credentials',
+);
+
+const DRIVER_API_BASE_URL = normalizeEndpoint(process.env.REACT_APP_DRIVER_API_BASE_URL);
+
+const withDriverBase = (path) => {
+  if (!DRIVER_API_BASE_URL) return path;
+  if (!path) return DRIVER_API_BASE_URL;
+  if (/^https?:\/\//i.test(path)) return path;
+  const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
+  return `${DRIVER_API_BASE_URL}/${normalizedPath}`;
+};
 
 /**
  * Fetch a list of all drivers.
  */
 export const listDrivers = () => {
-  return API.get(DRIVERS_LIST || '/drivers');
+  return API.get(withDriverBase(DRIVER_LIST_PATH || '/drivers'));
 };
 
 /**
@@ -23,7 +42,16 @@ export const listDrivers = () => {
  * @param {string} id - Driver's MongoDB _id.
  */
 export const getDriver = (id) => {
-  return API.get(pathWithId(id, process.env.REACT_APP_DRIVERS_GET, process.env.REACT_APP_DRIVERS_UPDATE, DRIVER_ID_TEMPLATE));
+  return API.get(
+    withDriverBase(
+      pathWithId(
+        id,
+        process.env.REACT_APP_DRIVERS_BY_ID,
+        process.env.REACT_APP_DRIVERS_UPDATE,
+        DRIVER_ID_TEMPLATE,
+      ) || `/drivers/${id}`,
+    ),
+  );
 };
 
 /**
@@ -31,7 +59,7 @@ export const getDriver = (id) => {
  * @param {Object} data - Driver fields.
  */
 export const addDriver = (data) => {
-  return API.post(DRIVERS_ADD || '/drivers', data);
+  return API.post(withDriverBase(DRIVER_ADD_PATH || '/drivers'), data);
 };
 
 /**
@@ -40,7 +68,35 @@ export const addDriver = (data) => {
  * @param {Object} data - Partial fields to update.
  */
 export const updateDriver = (id, data) => {
-  return API.put(pathWithId(id, process.env.REACT_APP_DRIVERS_UPDATE, process.env.REACT_APP_DRIVERS_GET, DRIVER_ID_TEMPLATE), data);
+  return API.put(
+    withDriverBase(
+      pathWithId(
+        id,
+        process.env.REACT_APP_DRIVERS_UPDATE,
+        process.env.REACT_APP_DRIVERS_BY_ID,
+        DRIVER_ID_TEMPLATE,
+      ) || `/drivers/${id}`,
+    ),
+    data,
+  );
 };
 
-export default { listDrivers, getDriver, addDriver, updateDriver };
+/**
+ * Update the driver mobile app credentials.
+ * @param {string} id - Driver's MongoDB _id.
+ * @param {Object} data - Credential fields.
+ */
+export const setAppCredentials = (id, data) => {
+  return API.patch(
+    withDriverBase(
+      pathWithId(
+        id,
+        process.env.REACT_APP_DRIVERS_SET_APP_CREDENTIALS,
+        DRIVER_APP_CREDENTIALS_TEMPLATE,
+      ) || `/drivers/${id}/app-credentials`,
+    ),
+    data,
+  );
+};
+
+export default { listDrivers, getDriver, addDriver, updateDriver, setAppCredentials };

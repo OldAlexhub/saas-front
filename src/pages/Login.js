@@ -21,6 +21,7 @@ const Login = () => {
       const res = await loginAdmin(form);
       const { token } = res.data;
       localStorage.setItem('token', token);
+      window.dispatchEvent(new Event('auth-token'));
       navigate('/');
     } catch (err) {
       const msg = err.response?.data?.message || 'Login failed';

@@ -18,6 +18,11 @@ import BookingsCreate from './pages/bookings/BookingsCreate';
 import BookingDetail from './pages/bookings/BookingDetail';
 import AdminApprovals from './pages/admins/AdminApprovals';
 import Fares from './pages/Fares';
+import ReportsBuilder from './pages/reports/ReportsBuilder';
+import ReceiptGenerator from './pages/reports/ReceiptGenerator';
+import CompanySettings from './pages/settings/CompanySettings';
+import AppSettings from './pages/settings/AppSettings';
+import DriverMessaging from './pages/settings/DriverMessaging';
 
 function App() {
   const token = localStorage.getItem('token');
@@ -72,6 +77,21 @@ function App() {
       <Route
         path="/fares"
         element={token ? <Fares /> : <Navigate to="/login" replace />} />
+      <Route
+        path="/settings/app"
+        element={token ? <AppSettings /> : <Navigate to="/login" replace />} />
+      <Route
+        path="/reports/builder"
+        element={token ? <ReportsBuilder /> : <Navigate to="/login" replace />} />
+      <Route
+        path="/reports/receipts"
+        element={token ? <ReceiptGenerator /> : <Navigate to="/login" replace />} />
+      <Route
+        path="/settings/company"
+        element={token ? <CompanySettings /> : <Navigate to="/login" replace />} />
+      <Route
+        path="/settings/messaging"
+        element={token ? <DriverMessaging /> : <Navigate to="/login" replace />} />
     </Routes>
   );
 }

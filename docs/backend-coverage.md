@@ -48,7 +48,7 @@ implementation and call sites.
 
 | Backend capability | Frontend entry point | Notes |
 | --- | --- | --- |
-| `GET /fares/current` | `src/pages/Fares.js` via `fareService.getFare` | Honors `REACT_APP_FARE_CURRENT` with `/fares/current` fallback. |
+| `GET /fares/current` | `src/pages/Fares.js` via `fareService.getFare` | Honors `REACT_APP_FARES_GET` with `/fares/current` fallback. |
 | `POST /fares` | `src/pages/Fares.js` via `fareService.addFare` | Allows initial fare creation with validation. |
 | `PUT /fares` | `src/pages/Fares.js` via `fareService.updateFare` | Updates existing fare schedules inline. |
 

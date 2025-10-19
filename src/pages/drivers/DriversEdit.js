@@ -1,47 +1,58 @@
-import React, { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import AppLayout from '../../components/AppLayout';
-import { getDriver, updateDriver } from '../../services/driverService';
+import React, { useEffect, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import AppLayout from "../../components/AppLayout";
+import { getDriver, updateDriver } from "../../services/driverService";
 
 const emptyForm = {
-  firstName: '',
-  lastName: '',
-  dlNumber: '',
-  email: '',
-  dob: '',
-  dlExpiry: '',
-  dotExpiry: '',
-  fullAddress: '',
-  ssn: '',
-  phoneNumber: '',
-  cbiExpiry: '',
-  mvrExpiry: '',
-  fingerPrintsExpiry: '',
+  driverId: "",
+  firstName: "",
+  lastName: "",
+  dlNumber: "",
+  email: "",
+  dob: "",
+  dlExpiry: "",
+  dotExpiry: "",
+  fullAddress: "",
+  ssn: "",
+  phoneNumber: "",
+  cbiExpiry: "",
+  mvrExpiry: "",
+  fingerPrintsExpiry: "",
 };
+
+const formatDateInput = (value) => (value ? value.substring(0, 10) : "");
 
 const DriversEdit = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+
   const [form, setForm] = useState(emptyForm);
   const [fetching, setFetching] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const fetchDriver = async () => {
       setFetching(true);
-      setError('');
+      setError("");
       try {
         const res = await getDriver(id);
         const data = res.data?.driver || res.data?.data || res.data;
-        if (data && typeof data === 'object') {
+        if (data && typeof data === "object") {
           setForm({
             ...emptyForm,
             ...data,
+            driverId: data.driverId || "",
+            dob: data.dob || "",
+            dlExpiry: data.dlExpiry || "",
+            dotExpiry: data.dotExpiry || "",
+            cbiExpiry: data.cbiExpiry || "",
+            mvrExpiry: data.mvrExpiry || "",
+            fingerPrintsExpiry: data.fingerPrintsExpiry || "",
           });
         }
       } catch (err) {
-        const msg = err.response?.data?.message || 'Unable to load driver';
+        const msg = err.response?.data?.message || "Unable to load driver";
         setError(msg);
       } finally {
         setFetching(false);
@@ -51,20 +62,20 @@ const DriversEdit = () => {
     fetchDriver();
   }, [id]);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
+  const handleChange = (event) => {
+    const { name, value } = event.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setError("");
     setSaving(true);
     try {
       await updateDriver(id, form);
-      navigate('/drivers');
+      navigate("/drivers");
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to update driver';
+      const msg = err.response?.data?.message || "Failed to update driver";
       setError(msg);
     } finally {
       setSaving(false);
@@ -85,7 +96,7 @@ const DriversEdit = () => {
     >
       <div className="surface">
         {fetching ? (
-          <div className="skeleton" style={{ height: '420px' }} />
+          <div className="skeleton" style={{ height: "420px" }} />
         ) : (
           <form onSubmit={handleSubmit}>
             <div className="form-section">
@@ -94,6 +105,10 @@ const DriversEdit = () => {
                 <p>Review core identity information before saving.</p>
               </div>
               <div className="form-grid">
+                <div>
+                  <label htmlFor="driverId">Driver ID</label>
+                  <input id="driverId" type="text" name="driverId" value={form.driverId} disabled />
+                </div>
                 <div>
                   <label htmlFor="firstName">First name</label>
                   <input
@@ -122,7 +137,7 @@ const DriversEdit = () => {
                     id="dob"
                     type="date"
                     name="dob"
-                    value={form.dob ? form.dob.substring(0, 10) : ''}
+                    value={formatDateInput(form.dob)}
                     onChange={handleChange}
                     required
                   />
@@ -197,7 +212,7 @@ const DriversEdit = () => {
                     id="dlExpiry"
                     type="date"
                     name="dlExpiry"
-                    value={form.dlExpiry ? form.dlExpiry.substring(0, 10) : ''}
+                    value={formatDateInput(form.dlExpiry)}
                     onChange={handleChange}
                     required
                   />
@@ -208,7 +223,7 @@ const DriversEdit = () => {
                     id="dotExpiry"
                     type="date"
                     name="dotExpiry"
-                    value={form.dotExpiry ? form.dotExpiry.substring(0, 10) : ''}
+                    value={formatDateInput(form.dotExpiry)}
                     onChange={handleChange}
                     required
                   />
@@ -219,7 +234,7 @@ const DriversEdit = () => {
                     id="cbiExpiry"
                     type="date"
                     name="cbiExpiry"
-                    value={form.cbiExpiry ? form.cbiExpiry.substring(0, 10) : ''}
+                    value={formatDateInput(form.cbiExpiry)}
                     onChange={handleChange}
                     required
                   />
@@ -230,7 +245,7 @@ const DriversEdit = () => {
                     id="mvrExpiry"
                     type="date"
                     name="mvrExpiry"
-                    value={form.mvrExpiry ? form.mvrExpiry.substring(0, 10) : ''}
+                    value={formatDateInput(form.mvrExpiry)}
                     onChange={handleChange}
                     required
                   />
@@ -241,7 +256,7 @@ const DriversEdit = () => {
                     id="fingerPrintsExpiry"
                     type="date"
                     name="fingerPrintsExpiry"
-                    value={form.fingerPrintsExpiry ? form.fingerPrintsExpiry.substring(0, 10) : ''}
+                    value={formatDateInput(form.fingerPrintsExpiry)}
                     onChange={handleChange}
                     required
                   />
@@ -252,7 +267,7 @@ const DriversEdit = () => {
             <div className="form-footer">
               <div>{error && <div className="feedback error">{error}</div>}</div>
               <button type="submit" className="btn btn-primary" disabled={saving}>
-                {saving ? 'Updating driver…' : 'Update driver'}
+                {saving ? "Updating driver." : "Update driver"}
               </button>
             </div>
           </form>

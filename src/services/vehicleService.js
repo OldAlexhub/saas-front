@@ -1,21 +1,24 @@
 import API from './api';
 import { pathWithId, resolvePath } from './endpointHelpers';
 
-const VEHICLES_BASE = resolvePath(
-  process.env.REACT_APP_VEHICLES,
-  process.env.REACT_APP_VEHICLES_LIST,
+const VEHICLE_LIST_PATH = resolvePath(process.env.REACT_APP_VEHICLES_LIST, '/vehicles');
+const VEHICLE_ADD_PATH = resolvePath(
   process.env.REACT_APP_VEHICLES_ADD,
+  VEHICLE_LIST_PATH,
   '/vehicles',
 );
-const VEHICLES_LIST = resolvePath(process.env.REACT_APP_VEHICLES_LIST, VEHICLES_BASE, '/vehicles');
-const VEHICLES_ADD = resolvePath(process.env.REACT_APP_VEHICLES_ADD, VEHICLES_BASE, '/vehicles');
-const VEHICLE_ID_TEMPLATE = `${VEHICLES_BASE || '/vehicles'}/:id`;
+const VEHICLE_ID_TEMPLATE = resolvePath(
+  process.env.REACT_APP_VEHICLES_BY_ID,
+  process.env.REACT_APP_VEHICLES_UPDATE,
+  `${VEHICLE_LIST_PATH || '/vehicles'}/:id`,
+  '/vehicles/:id',
+);
 
 /**
  * Fetch all vehicles.
  */
 export const listVehicles = () => {
-  return API.get(VEHICLES_LIST || '/vehicles');
+  return API.get(VEHICLE_LIST_PATH || '/vehicles');
 };
 
 /**
@@ -23,7 +26,14 @@ export const listVehicles = () => {
  * @param {string} id - Vehicle document id.
  */
 export const getVehicle = (id) => {
-  return API.get(pathWithId(id, process.env.REACT_APP_VEHICLES_GET, process.env.REACT_APP_VEHICLES_UPDATE, VEHICLE_ID_TEMPLATE));
+  return API.get(
+      pathWithId(
+        id,
+        process.env.REACT_APP_VEHICLES_BY_ID,
+        process.env.REACT_APP_VEHICLES_UPDATE,
+        VEHICLE_ID_TEMPLATE,
+      ) || `/vehicles/${id}`,
+  );
 };
 
 /**
@@ -32,7 +42,7 @@ export const getVehicle = (id) => {
  * @param {FormData} formData - The form data containing vehicle fields and file.
  */
 export const addVehicle = (formData) => {
-  return API.post(VEHICLES_ADD || '/vehicles', formData, {
+  return API.post(VEHICLE_ADD_PATH || '/vehicles', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
 };
@@ -44,10 +54,18 @@ export const addVehicle = (formData) => {
  * @param {FormData} formData - The updated fields as FormData.
  */
 export const updateVehicle = (id, formData) => {
-  return API.put(pathWithId(id, process.env.REACT_APP_VEHICLES_UPDATE, process.env.REACT_APP_VEHICLES_GET, VEHICLE_ID_TEMPLATE),
-formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  return API.put(
+      pathWithId(
+        id,
+        process.env.REACT_APP_VEHICLES_UPDATE,
+        process.env.REACT_APP_VEHICLES_BY_ID,
+        VEHICLE_ID_TEMPLATE,
+      ) || `/vehicles/${id}`,
+    formData,
+    {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    },
+  );
 };
 
 export default { listVehicles, getVehicle, addVehicle, updateVehicle };

@@ -4,15 +4,21 @@ import AppLayout from '../../components/AppLayout';
 import { listActives } from '../../services/activeService';
 import {
   assignBooking,
-  cancelBooking,
   changeStatus,
   getBooking,
   updateBooking,
 } from '../../services/bookingService';
-import { listDrivers } from '../../services/driverService';
 import { listVehicles } from '../../services/vehicleService';
 
-const statusOptions = ['Scheduled', 'Assigned', 'Completed', 'Cancelled'];
+const statusOptions = [
+  { value: 'Pending', label: 'Scheduled' },
+  { value: 'Assigned', label: 'Assigned' },
+  { value: 'EnRoute', label: 'En route' },
+  { value: 'PickedUp', label: 'Picked up' },
+  { value: 'Completed', label: 'Completed' },
+  { value: 'Cancelled', label: 'Cancelled' },
+  { value: 'NoShow', label: 'No show' },
+];
 
 const BookingDetail = () => {
   const { id } = useParams();
@@ -30,7 +36,6 @@ const BookingDetail = () => {
   const [assignmentMode, setAssignmentMode] = useState('manual');
   const [assignment, setAssignment] = useState({ driverId: '', cabNumber: '' });
   const [statusForm, setStatusForm] = useState({ toStatus: '', reason: '', fee: '' });
-  const [drivers, setDrivers] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [actives, setActives] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -43,15 +48,12 @@ const BookingDetail = () => {
       setLoading(true);
       setError('');
       try {
-        const [bookingRes, driversRes, vehiclesRes, activesRes] = await Promise.all([
+        const [bookingRes, vehiclesRes, activesRes] = await Promise.all([
           getBooking(id),
-          listDrivers(),
           listVehicles(),
           listActives(),
         ]);
         const bookingData = bookingRes.data?.booking || bookingRes.data?.data || bookingRes.data;
-        const driverList =
-          driversRes.data?.drivers || driversRes.data?.results || driversRes.data || [];
         const vehicleList =
           vehiclesRes.data?.vehicles || vehiclesRes.data?.results || vehiclesRes.data || [];
         const activeList =
@@ -92,8 +94,7 @@ const BookingDetail = () => {
           driverId: initialDriverId,
           cabNumber: initialCabNumber,
         });
-        setStatusForm({ toStatus: bookingData?.status || 'Scheduled', reason: '', fee: '' });
-        setDrivers(Array.isArray(driverList) ? driverList : []);
+        setStatusForm({ toStatus: bookingData?.status || 'Pending', reason: '', fee: '' });
         setVehicles(Array.isArray(vehicleList) ? vehicleList : []);
       } catch (err) {
         const msg = err.response?.data?.message || 'Unable to load booking';
@@ -119,21 +120,19 @@ const BookingDetail = () => {
       const detailParts = [];
       if (active?.cabNumber) detailParts.push(`Cab ${active.cabNumber}`);
       if (active?.availability) detailParts.push(active.availability);
-      const label = detailParts.length ? `${name} · ${detailParts.join(' · ')}` : name;
+      const label = detailParts.length ? `${name} - ${detailParts.join(' - ')}` : name;
       options.push({ value: normalizedValue, label });
     });
 
-    drivers.forEach((driver) => {
-      const value = driver?._id ?? driver?.id;
-      const normalizedValue = value != null ? String(value) : '';
-      if (!normalizedValue || seen.has(normalizedValue)) return;
-      seen.add(normalizedValue);
-      const label = `${driver?.firstName || ''} ${driver?.lastName || ''}`.trim() || driver?.email || 'Unnamed driver';
-      options.push({ value: normalizedValue, label });
-    });
+    const currentDriverId =
+      assignment.driverId || (booking?.driverId != null ? String(booking.driverId) : '');
+    if (currentDriverId && !seen.has(currentDriverId)) {
+      const fallbackLabel = booking?.driverName || currentDriverId;
+      options.push({ value: currentDriverId, label: `${fallbackLabel} (inactive)` });
+    }
 
     return options;
-  }, [actives, drivers]);
+  }, [actives, assignment.driverId, booking?.driverId, booking?.driverName]);
 
   const vehicleOptions = useMemo(() => {
     const map = new Map();
@@ -235,22 +234,26 @@ const BookingDetail = () => {
     setError('');
     try {
       if (assignmentMode === 'auto') {
-        const res = await assignBooking(id, { mode: 'auto' });
+        const res = await assignBooking(id, { dispatchMethod: 'auto' });
         const updated = res.data?.data || res.data?.booking || {};
-        setBooking((prev) => ({ ...prev, ...updated }));
+        setBooking((prev) => ({ ...prev, ...updated, needs_reassignment: false }));
         setMessage('Assignment queued for auto dispatch');
       } else {
         const payload = {
           driverId: assignment.driverId,
           cabNumber: assignment.cabNumber,
+          dispatchMethod: 'manual',
         };
         const res = await assignBooking(id, payload);
         const updated = res.data?.data || res.data?.booking || {};
-        setBooking((prev) => ({ ...prev, ...updated }));
+        setBooking((prev) => ({ ...prev, ...updated, needs_reassignment: false }));
         setMessage('Booking assigned to driver');
       }
     } catch (err) {
       const msg = err.response?.data?.message || 'Failed to assign booking';
+      if (err.response?.data?.needsManual) {
+        setBooking((prev) => (prev ? { ...prev, needs_reassignment: true } : prev));
+      }
       setError(msg);
     } finally {
       setSaving(false);
@@ -271,27 +274,15 @@ const BookingDetail = () => {
       const res = await changeStatus(id, payload);
       const updated = res.data?.data || res.data?.booking || {};
       setBooking((prev) => ({ ...prev, ...updated }));
-      setMessage('Booking status updated');
+      const statusLabel =
+        statusOptions.find((option) => option.value === payload.toStatus)?.label || payload.toStatus;
+      setMessage(
+        payload.toStatus === 'Cancelled'
+          ? 'Booking cancelled.'
+          : `Booking marked ${statusLabel}.`,
+      );
     } catch (err) {
       const msg = err.response?.data?.message || 'Failed to change status';
-      setError(msg);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const cancel = async () => {
-    setSaving(true);
-    setMessage('');
-    setError('');
-    try {
-      const res = await cancelBooking(id);
-      const updated = res.data?.data || res.data?.booking || {};
-      setBooking((prev) => ({ ...prev, ...updated, status: 'Cancelled' }));
-      setStatusForm((prev) => ({ ...prev, toStatus: 'Cancelled' }));
-      setMessage('Booking cancelled');
-    } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to cancel booking';
       setError(msg);
     } finally {
       setSaving(false);
@@ -306,12 +297,16 @@ const BookingDetail = () => {
 
   const renderSummary = () => {
     if (!booking) return null;
+    const statusLabel =
+      statusOptions.find((option) => option.value === booking.status)?.label ||
+      booking.status ||
+      'Scheduled';
     return (
       <div className="panel" style={{ marginBottom: '24px' }}>
         <div className="panel-header">
           <h3>Booking overview</h3>
           <span className={`badge ${booking.status === 'Completed' ? 'badge-success' : booking.status === 'Cancelled' ? 'badge-warning' : 'badge-info'}`}>
-            {booking.status}
+            {statusLabel}
           </span>
         </div>
         <div className="panel-body">
@@ -367,6 +362,11 @@ const BookingDetail = () => {
           <>
             {message && <div className="feedback success">{message}</div>}
             {error && <div className="feedback error">{error}</div>}
+            {booking?.needs_reassignment && (
+              <div className="feedback warning">
+                Automatic dispatch did not find an available driver. Assign manually or retry when more drivers are online.
+              </div>
+            )}
             {renderSummary()}
 
             <div className="form-grid two-column">
@@ -603,9 +603,9 @@ const BookingDetail = () => {
                           value={statusForm.toStatus}
                           onChange={handleStatusChange}
                         >
-                          {statusOptions.map((status) => (
-                            <option key={status} value={status}>
-                              {status}
+                          {statusOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
                             </option>
                           ))}
                         </select>
@@ -634,14 +634,9 @@ const BookingDetail = () => {
                     </div>
                   </div>
                   <div className="panel-footer">
-                    <div className="pill-group">
-                      <button type="submit" className="btn btn-primary" disabled={saving}>
-                        Update status
-                      </button>
-                      <button type="button" className="btn btn-ghost" onClick={cancel} disabled={saving}>
-                        Cancel booking
-                      </button>
-                    </div>
+                    <button type="submit" className="btn btn-primary" disabled={saving}>
+                      {saving ? 'Saving.' : 'Update booking status'}
+                    </button>
                   </div>
                 </form>
               </section>
