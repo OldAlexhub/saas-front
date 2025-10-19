@@ -1,70 +1,144 @@
-# Getting Started with Create React App
+TaxiOps Frontend (Client)
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This is the administrative web frontend for TaxiOps — a taxi/dispatch operations dashboard built with React. It provides user authentication, driver & vehicle management, bookings, live driver tracking (via Leaflet maps), reporting, and integrations with the backend realtime API.
 
-## Available Scripts
+This repository contains the client app located in the `client/` folder and is a Create React App project.
 
-In the project directory, you can run:
+## Quick facts
 
-### `npm start`
+- Framework: React 18 (Create React App)
+- UI: Bootstrap 5 (via `react-bootstrap`)
+- Maps: Leaflet (via `react-leaflet`)
+- Realtime: socket.io-client (connected to the server realtime API)
+- HTTP client: axios
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## Table of contents
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+- Requirements
+- Getting started (development)
+- Available scripts
+- Environment variables
+- Project structure
+- Key pages & features
+- Building & deployment
+- Troubleshooting
+- Contributing
+- License
 
-### `npm test`
+## Requirements
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- Node.js (LTS recommended) and npm. This project uses Create React App.
+- A running TaxiOps backend (server/) for API and realtime; to use live features you should run the backend locally or point the app to a deployed backend.
 
-### `npm run build`
+## Getting started (development)
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+1. Open a terminal and change into the `client/` directory.
+2. Install dependencies:
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+```bash
+cd client
+npm install
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+3. Start the development server:
 
-### `npm run eject`
+```bash
+npm start
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+4. Open http://localhost:3000 in your browser. The app uses the `RealtimeProvider` and `BrowserRouter` from `src/index.js`.
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+If you want the frontend to communicate with a local backend, make sure your backend server is running (the server folder in the repository) and configure the API base URL using an environment variable (see below).
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+## Available scripts
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+All scripts are defined in `client/package.json`:
 
-## Learn More
+- `npm start` — start the dev server (Create React App).
+- `npm run build` — create a production build in `client/build`.
+- `npm test` — run the test runner.
+- `npm run eject` — eject CRA configuration (one-way).
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+## Environment variables
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+You can configure runtime values using a `.env` file in the `client/` folder. Create React App requires variables to be prefixed with `REACT_APP_` to be available in the app.
 
-### Code Splitting
+Recommended variables (examples):
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+- `REACT_APP_API_BASE_URL` — Backend REST API base URL (e.g. `http://localhost:4000/api`).
+- `REACT_APP_REALTIME_URL` — Realtime server URL for socket.io (e.g. `http://localhost:4000`).
 
-### Analyzing the Bundle Size
+Create a `.env` file:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+```bash
+# client/.env
+REACT_APP_API_BASE_URL=http://localhost:4000/api
+REACT_APP_REALTIME_URL=http://localhost:4000
+```
 
-### Making a Progressive Web App
+Note: after changing `.env`, restart the dev server to pick up the changes.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+## Project structure
 
-### Advanced Configuration
+Key files and folders in `client/`:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+- `public/` — static files and the HTML shell.
+- `src/index.js` — app entry; sets up Bootstrap, Leaflet CSS, `BrowserRouter`, and `RealtimeProvider`.
+- `src/App.js` — main route configuration and protected routes (checks `localStorage.token`).
+- `src/pages/` — top-level pages: `Dashboard`, `Login`, `Signup`, `Fares`, and subfolders for `drivers`, `vehicles`, `bookings`, `reports`, `settings`, etc.
+- `src/components/` — shared UI components (layout, nav, etc.).
+- `src/providers/RealtimeProvider.js` — socket.io connection and realtime context provider.
+- `src/services/` — API wrapper modules (`axios` configured here) for working with backend endpoints.
+- `src/styles/theme.css` — app-wide style overrides.
 
-### Deployment
+## Key pages & features
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+- Authentication — `Login` and `Signup` pages. Successful login stores a `token` in `localStorage` and enables protected routes.
+- Dashboard — landing admin view showing summaries and live activity.
+- Drivers management — list, create, and edit drivers. Integrates with driver realtime location features.
+- Vehicles management — list, create, and edit vehicles and inspections (uploads stored in `public/uploads`).
+- Bookings — create, view, and manage bookings; includes a booking detail page.
+- Actives — active driver assignments and live tracking.
+- Reports & receipts — tools to generate reports and printable receipts (uses `jspdf`).
 
-### `npm run build` fails to minify
+Maps and Realtime
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- The app uses `react-leaflet` to render maps for drivers and bookings.
+- Realtime updates are handled by socket.io via `socket.io-client` and the `RealtimeProvider`.
+
+## Building & deployment
+
+To produce a production build:
+
+```bash
+cd client
+npm run build
+```
+
+This produces optimized static files in `client/build`. Serve these files from a static host, or configure your backend server to serve the build directory.
+
+If deploying behind a reverse proxy, ensure API calls from the client are routed to the backend and that `REACT_APP_API_BASE_URL` is set to the correct origin.
+
+## Troubleshooting
+
+- If maps don't render correctly, ensure Leaflet CSS is loaded (it is imported in `src/index.js`):
+	- `import 'leaflet/dist/leaflet.css';`
+- If realtime features aren't working, verify `REACT_APP_REALTIME_URL` and check backend realtime server logs.
+- If authentication redirects to `/login` unexpectedly, open the browser console and check `localStorage.token` and network requests to the backend login endpoint.
+
+## Contributing
+
+If you'd like to contribute:
+
+1. Fork the repository and create a feature branch.
+2. Make small, focused commits with clear messages.
+3. Run `npm install` and `npm start` to verify your changes.
+4. Open a pull request describing your changes.
+
+## License
+
+This project does not include an explicit license file in the `client/` folder. Add a `LICENSE` file at the repo root if you want to make the license explicit.
+
+---
+
+by Mohamed Gad, Old Alex Hub, LLC
