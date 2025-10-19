@@ -32,6 +32,28 @@ const expiryBadge = (value) => {
   return <span className="badge badge-success">Compliant</span>;
 };
 
+// Consolidated compliance badge considering multiple expiry dates
+const complianceBadge = ({ dlExpiry, cbiExpiry, dotExpiry }) => {
+  // If any required field is missing, mark as Missing
+  if (!dlExpiry || !cbiExpiry || !dotExpiry) {
+    return <span className="badge badge-warning">Missing</span>;
+  }
+  const now = new Date();
+  const expiries = [dlExpiry, cbiExpiry, dotExpiry]
+    .map((v) => {
+      const d = new Date(v);
+      return Number.isNaN(d.getTime()) ? null : d;
+    })
+    .filter(Boolean);
+  if (!expiries.length) return <span className="badge badge-warning">Invalid dates</span>;
+
+  // If any already expired -> Expired. Else if any within 30 days -> Expiring soon
+  const diffs = expiries.map((d) => (d - now) / (1000 * 60 * 60 * 24));
+  if (diffs.some((diff) => diff < 0)) return <span className="badge badge-warning">Expired</span>;
+  if (diffs.some((diff) => diff < 30)) return <span className="badge badge-warning">Expiring soon</span>;
+  return <span className="badge badge-success">Compliant</span>;
+};
+
 const DriversList = () => {
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -131,8 +153,8 @@ const DriversList = () => {
               </td>
               <td data-label="Compliance">
                 <div className="table-stack">
-                  <span className="primary">{expiryBadge(driver.dlExpiry)}</span>
-                  <span className="secondary">CBI: {formatDate(driver.cbiExpiry)} • DOT: {formatDate(driver.dotExpiry)}</span>
+                  <span className="primary">{complianceBadge({ dlExpiry: driver.dlExpiry, cbiExpiry: driver.cbiExpiry, dotExpiry: driver.dotExpiry })}</span>
+                  <span className="secondary">DL: {formatDate(driver.dlExpiry)} • CBI: {formatDate(driver.cbiExpiry)} • DOT: {formatDate(driver.dotExpiry)}</span>
                 </div>
               </td>
               <td data-label="Actions">

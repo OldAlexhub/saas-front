@@ -9,7 +9,7 @@ const formatDate = (value) => {
   return Number.isNaN(parsed.getTime()) ? '—' : parsed.toLocaleDateString();
 };
 
-const registrationBadge = (value) => {
+const expiryBadge = (value) => {
   if (!value) return <span className="badge badge-warning">Missing</span>;
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
@@ -17,8 +17,8 @@ const registrationBadge = (value) => {
   }
   const diff = (parsed - new Date()) / (1000 * 60 * 60 * 24);
   if (diff < 0) return <span className="badge badge-warning">Expired</span>;
-  if (diff < 30) return <span className="badge badge-warning">Renew soon</span>;
-  return <span className="badge badge-success">Clear</span>;
+  if (diff < 30) return <span className="badge badge-warning">Expiring soon</span>;
+  return <span className="badge badge-success">Compliant</span>;
 };
 
 const VehiclesList = () => {
@@ -105,14 +105,14 @@ const VehiclesList = () => {
               </td>
               <td data-label="Registration">
                 <div className="table-stack">
-                  <span className="primary">{registrationBadge(vehicle.regisExpiry)}</span>
+                  <span className="primary">{expiryBadge(vehicle.regisExpiry)}</span>
                   <span className="secondary">Expires {formatDate(vehicle.regisExpiry)}</span>
                 </div>
               </td>
               <td data-label="Make & model">
                 <div className="table-stack">
                   <span className="primary">{vehicle.make || '—'} {vehicle.model || ''}</span>
-                  <span className="secondary">Annual inspection: {formatDate(vehicle.annualInspection)}</span>
+                  <span className="secondary">Annual inspection: {formatDate(vehicle.annualInspection)} {' '}{expiryBadge(vehicle.annualInspection)}</span>
                 </div>
               </td>
               <td data-label="Identifiers">
