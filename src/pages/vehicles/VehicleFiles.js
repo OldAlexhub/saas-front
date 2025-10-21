@@ -176,7 +176,12 @@ const VehicleFiles = () => {
                     <td>{f.size ? `${(f.size/1024).toFixed(1)} KB` : '-'}</td>
                     <td style={{ textAlign: 'right' }}>
                       {!f.available ? (
-                        <span className="badge badge-warning">Unavailable</span>
+                        <span
+                          className="badge badge-warning"
+                          title={f.checkedPaths ? f.checkedPaths.slice(0,5).join('\n') : 'File not found on server'}
+                        >
+                          Unavailable
+                        </span>
                       ) : (
                         <button className="btn btn-ghost" type="button" onClick={() => handleDownloadFile(f)}>Download</button>
                       )}
