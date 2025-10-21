@@ -87,12 +87,44 @@ const VehicleFiles = () => {
   };
 
   const handleDownloadFile = (file) => {
-    // file.url is an absolute path like /uploads/vehicles/filename
-    const url = file.url || `/uploads/vehicles/${file.filename}`;
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = file.originalName || file.filename;
-    link.click();
+    (async () => {
+      try {
+        const url = file.downloadUrl || `/api/vehicles/${file.vehicleId}/inspection`;
+        const res = await API.get(url.replace(/^\/api/, ''), { responseType: 'blob' });
+        // Note: API is an axios instance with baseURL=/api; above we trimmed leading /api to avoid double prefixing
+        if (res.status !== 200) {
+          const msg = res.data?.message || `Download failed (${res.status})`;
+          window.dispatchEvent(new CustomEvent('taxiops:pushNotification', { detail: { message: msg, tone: 'warning' } }));
+          return;
+        }
+
+        const contentType = (res.headers['content-type'] || '').toLowerCase();
+        if (!contentType.includes('application') && !contentType.includes('pdf') && !contentType.includes('image')) {
+          window.dispatchEvent(new CustomEvent('taxiops:pushNotification', { detail: { message: 'Server returned invalid file content.', tone: 'warning' } }));
+          return;
+        }
+
+        const blob = res.data;
+        const link = document.createElement('a');
+        link.href = window.URL.createObjectURL(blob);
+        link.download = file.originalName || file.filename || 'inspection-file';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(link.href);
+        window.dispatchEvent(new CustomEvent('taxiops:pushNotification', { detail: { message: 'Inspection downloaded', tone: 'success' } }));
+      } catch (err) {
+        console.error('download error', err);
+        const status = err.response?.status;
+        if (status === 401 || status === 403) {
+          navigate('/login');
+          window.dispatchEvent(new CustomEvent('taxiops:pushNotification', { detail: { message: 'Not authenticated. Redirecting to login...', tone: 'warning' } }));
+          return;
+        }
+        const msg = err.response?.data?.message || err.message || 'Failed to download file. See console for details.';
+        window.dispatchEvent(new CustomEvent('taxiops:pushNotification', { detail: { message: msg, tone: 'warning' } }));
+      }
+    })();
   };
 
   const anyAvailable = files.some((f) => f.available);
@@ -111,7 +143,7 @@ const VehicleFiles = () => {
           </div>
         </div>
 
-        <div className="panel-body">
+            <div className="panel-body">
           <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
             <input placeholder="Driver ID" value={filter.driverId} onChange={(e) => setFilter((p) => ({ ...p, driverId: e.target.value }))} />
             <input placeholder="Cab number" value={filter.cabNumber} onChange={(e) => setFilter((p) => ({ ...p, cabNumber: e.target.value }))} />
@@ -144,7 +176,7 @@ const VehicleFiles = () => {
                     <td>{f.size ? `${(f.size/1024).toFixed(1)} KB` : '-'}</td>
                     <td style={{ textAlign: 'right' }}>
                       {!f.available ? (
-                        <span className="badge badge-warning">Not available</span>
+                        <span className="badge badge-warning">Unavailable</span>
                       ) : (
                         <button className="btn btn-ghost" type="button" onClick={() => handleDownloadFile(f)}>Download</button>
                       )}

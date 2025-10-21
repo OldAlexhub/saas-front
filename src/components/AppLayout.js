@@ -243,6 +243,23 @@ const AppLayout = ({ title, subtitle, actions, children }) => {
   );
 
   useEffect(() => {
+    // Allow other parts of the app to push notifications via a window event
+    const handler = (ev) => {
+      try {
+        const detail = ev?.detail;
+        if (!detail) return;
+        const { message, tone } = detail;
+        if (!message) return;
+        pushNotification(message, tone || 'info');
+      } catch (e) {
+        // ignore malformed events
+      }
+    };
+    window.addEventListener('taxiops:pushNotification', handler);
+    return () => window.removeEventListener('taxiops:pushNotification', handler);
+  }, [pushNotification]);
+
+  useEffect(() => {
     if (!socket) return undefined;
 
     const handleAssignmentUpdate = (payload = {}) => {
