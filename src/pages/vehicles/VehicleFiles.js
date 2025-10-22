@@ -8,6 +8,9 @@ const VehicleFiles = () => {
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState({ driverId: '', cabNumber: '' });
   const [error, setError] = useState('');
+  const [downloadingId, setDownloadingId] = useState(null);
+  const [zipLoading, setZipLoading] = useState(false);
+  const [fileErrors, setFileErrors] = useState({});
   const navigate = useNavigate();
 
   const fetchFiles = async () => {
@@ -42,10 +45,9 @@ const VehicleFiles = () => {
   }, []);
 
   const handleDownloadZip = async () => {
+    setZipLoading(true);
+    setError('');
     try {
-      const params = new URLSearchParams();
-      if (filter.driverId) params.set('driverId', filter.driverId);
-      if (filter.cabNumber) params.set('cabNumber', filter.cabNumber);
       const paramsObj = {};
       if (filter.driverId) paramsObj.driverId = filter.driverId;
       if (filter.cabNumber) paramsObj.cabNumber = filter.cabNumber;
@@ -83,18 +85,24 @@ const VehicleFiles = () => {
       } else {
         setError(msg);
       }
+    } finally {
+      setZipLoading(false);
     }
   };
 
   const handleDownloadFile = (file) => {
     (async () => {
       try {
-        const url = file.downloadUrl || `/api/vehicles/${file.vehicleId}/inspection`;
-        const res = await API.get(url.replace(/^\/api/, ''), { responseType: 'blob' });
+        setDownloadingId(file.vehicleId);
+        setFileErrors((p) => ({ ...p, [file.vehicleId]: null }));
+        const url = file.downloadUrl || `/vehicles/${file.vehicleId}/inspection`;
+        const res = await API.get(url, { responseType: 'blob' });
         // Note: API is an axios instance with baseURL=/api; above we trimmed leading /api to avoid double prefixing
         if (res.status !== 200) {
           const msg = res.data?.message || `Download failed (${res.status})`;
+          setFileErrors((p) => ({ ...p, [file.vehicleId]: msg }));
           window.dispatchEvent(new CustomEvent('taxiops:pushNotification', { detail: { message: msg, tone: 'warning' } }));
+          setDownloadingId(null);
           return;
         }
 
@@ -113,16 +121,20 @@ const VehicleFiles = () => {
         link.remove();
         window.URL.revokeObjectURL(link.href);
         window.dispatchEvent(new CustomEvent('taxiops:pushNotification', { detail: { message: 'Inspection downloaded', tone: 'success' } }));
+        setDownloadingId(null);
       } catch (err) {
         console.error('download error', err);
         const status = err.response?.status;
         if (status === 401 || status === 403) {
           navigate('/login');
           window.dispatchEvent(new CustomEvent('taxiops:pushNotification', { detail: { message: 'Not authenticated. Redirecting to login...', tone: 'warning' } }));
+          setDownloadingId(null);
           return;
         }
         const msg = err.response?.data?.message || err.message || 'Failed to download file. See console for details.';
+        setFileErrors((p) => ({ ...p, [file.vehicleId]: msg }));
         window.dispatchEvent(new CustomEvent('taxiops:pushNotification', { detail: { message: msg, tone: 'warning' } }));
+        setDownloadingId(null);
       }
     })();
   };
@@ -144,10 +156,17 @@ const VehicleFiles = () => {
         </div>
 
             <div className="panel-body">
-          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
             <input placeholder="Driver ID" value={filter.driverId} onChange={(e) => setFilter((p) => ({ ...p, driverId: e.target.value }))} />
             <input placeholder="Cab number" value={filter.cabNumber} onChange={(e) => setFilter((p) => ({ ...p, cabNumber: e.target.value }))} />
-            <button className="btn btn-subtle" type="button" onClick={fetchFiles}>Apply</button>
+            <button className="btn btn-subtle" type="button" onClick={fetchFiles} disabled={loading}>Apply</button>
+            {zipLoading ? (
+              <button className="btn btn-ghost" type="button" disabled>
+                Downloading ZIP...
+              </button>
+            ) : (
+              <button className="btn btn-ghost" type="button" onClick={handleDownloadZip} disabled={!anyAvailable}>Download ZIP</button>
+            )}
           </div>
 
           {loading ? (
@@ -169,21 +188,33 @@ const VehicleFiles = () => {
               </thead>
               <tbody>
                 {files.map((f) => (
-                  <tr key={f.filename}>
+                          <tr key={f.filename || f.vehicleId}>
                     <td>{f.cabNumber}</td>
                     <td>{f.filename}</td>
                     <td>{f.originalName}</td>
                     <td>{f.size ? `${(f.size/1024).toFixed(1)} KB` : '-'}</td>
                     <td style={{ textAlign: 'right' }}>
                       {!f.available ? (
-                        <span
-                          className="badge badge-warning"
-                          title={f.checkedPaths ? f.checkedPaths.slice(0,5).join('\n') : 'File not found on server'}
-                        >
-                          Unavailable
-                        </span>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                          <span
+                            className="badge badge-warning"
+                            title={f.checkedStorage ? (Array.isArray(f.checkedStorage) ? f.checkedStorage.join('\n') : f.checkedStorage) : (f.checkedPaths ? f.checkedPaths.slice(0,5).join('\n') : 'File not found on server')}
+                          >
+                            Unavailable
+                          </span>
+                          {fileErrors[f.vehicleId] ? (
+                            <div style={{ color: '#e5b200', marginTop: 6, fontSize: 12 }}>{fileErrors[f.vehicleId]}</div>
+                          ) : null}
+                        </div>
                       ) : (
-                        <button className="btn btn-ghost" type="button" onClick={() => handleDownloadFile(f)}>Download</button>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                          <button className="btn btn-ghost" type="button" onClick={() => handleDownloadFile(f)} disabled={downloadingId && downloadingId !== f.vehicleId}>
+                            {downloadingId === f.vehicleId ? 'Downloading...' : 'Download'}
+                          </button>
+                          {fileErrors[f.vehicleId] ? (
+                            <div style={{ color: '#e5b200', marginTop: 6, fontSize: 12 }}>{fileErrors[f.vehicleId]}</div>
+                          ) : null}
+                        </div>
                       )}
                     </td>
                   </tr>
