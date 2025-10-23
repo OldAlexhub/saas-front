@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AppLayout from '../../components/AppLayout';
 import { addVehicle } from '../../services/vehicleService';
@@ -16,7 +16,6 @@ const VehiclesCreate = () => {
     model: '',
     color: '',
   });
-  const [file, setFile] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -26,7 +25,6 @@ const VehiclesCreate = () => {
   };
 
   const handleFileChange = (e) => {
-    setFile(e.target.files[0] || null);
   };
 
   const handleSubmit = async (e) => {
@@ -40,9 +38,7 @@ const VehiclesCreate = () => {
           formData.append(key, value);
         }
       });
-      if (file) {
-        formData.append('annualInspectionFile', file);
-      }
+      // Note: file uploads removed per UI change request
       await addVehicle(formData);
       navigate('/vehicles');
     } catch (err) {
@@ -177,15 +173,7 @@ const VehiclesCreate = () => {
                   onChange={handleChange}
                 />
               </div>
-              <div>
-                <label htmlFor="inspectionUpload">Upload inspection proof (PDF or image)</label>
-                <input
-                  id="inspectionUpload"
-                  type="file"
-                  accept="image/*,application/pdf"
-                  onChange={handleFileChange}
-                />
-              </div>
+              
             </div>
           </div>
 

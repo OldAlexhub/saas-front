@@ -151,7 +151,6 @@ const navSections = [
     icon: icons.vehicles,
     items: [
       { to: '/vehicles', label: 'Vehicles', icon: icons.vehicles },
-          { to: '/vehicles/files', label: 'Vehicle files', icon: icons.vehicles, end: true },
       { to: '/vehicles/new', label: 'Add Vehicle', icon: icons.create, end: true },
     ],
   },
@@ -163,6 +162,7 @@ const navSections = [
     items: [
       { to: '/reports/builder', label: 'Report Designer', icon: icons.reports, end: true },
       { to: '/reports/receipts', label: 'Generate Receipts', icon: icons.reports, end: true },
+      { to: '/reports/diagnostics', label: 'Diagnostics', icon: icons.reports, end: true },
     ],
   },
   {

@@ -14,13 +14,13 @@ import DriversEdit from './pages/drivers/DriversEdit';
 import DriversList from './pages/drivers/DriversList';
 import Fares from './pages/Fares';
 import Login from './pages/Login';
+import ReportsDiagnostics from './pages/reports/Diagnostics';
 import ReceiptGenerator from './pages/reports/ReceiptGenerator';
 import ReportsBuilder from './pages/reports/ReportsBuilder';
 import AppSettings from './pages/settings/AppSettings';
 import CompanySettings from './pages/settings/CompanySettings';
 import DriverMessaging from './pages/settings/DriverMessaging';
 import Signup from './pages/Signup';
-import VehicleFiles from './pages/vehicles/VehicleFiles';
 import VehiclesCreate from './pages/vehicles/VehiclesCreate';
 import VehiclesEdit from './pages/vehicles/VehiclesEdit';
 import VehiclesList from './pages/vehicles/VehiclesList';
@@ -67,9 +67,7 @@ function App() {
       <Route
         path="/vehicles/:id"
         element={token ? <VehiclesEdit /> : <Navigate to="/login" replace />} />
-      <Route
-        path="/vehicles/files"
-        element={token ? <VehicleFiles /> : <Navigate to="/login" replace />} />
+      {/* Vehicle files page removed from navigation per request */}
       <Route
         path="/actives"
         element={token ? <ActivesList /> : <Navigate to="/login" replace />} />
@@ -100,6 +98,9 @@ function App() {
       <Route
         path="/reports/receipts"
         element={token ? <ReceiptGenerator /> : <Navigate to="/login" replace />} />
+      <Route
+        path="/reports/diagnostics"
+        element={token ? <ReportsDiagnostics /> : <Navigate to="/login" replace />} />
       <Route
         path="/settings/company"
         element={token ? <CompanySettings /> : <Navigate to="/login" replace />} />

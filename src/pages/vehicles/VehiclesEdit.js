@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import AppLayout from '../../components/AppLayout';
 import { getVehicle, updateVehicle } from '../../services/vehicleService';
@@ -19,7 +19,6 @@ const VehiclesEdit = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [form, setForm] = useState(emptyForm);
-  const [file, setFile] = useState(null);
   const [fetching, setFetching] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -56,7 +55,6 @@ const VehiclesEdit = () => {
   };
 
   const handleFileChange = (e) => {
-    setFile(e.target.files[0] || null);
   };
 
   const handleSubmit = async (e) => {
@@ -74,9 +72,7 @@ const VehiclesEdit = () => {
           }
         }
       });
-      if (file) {
-        formData.append('annualInspectionFile', file);
-      }
+      // File upload removed from edit form per request
       await updateVehicle(id, formData);
       navigate('/vehicles');
     } catch (err) {
@@ -215,18 +211,13 @@ const VehiclesEdit = () => {
                   />
                 </div>
                 <div>
-                  <label htmlFor="inspectionUpload">Upload new inspection proof (PDF or image)</label>
-                  <input
-                    id="inspectionUpload"
-                    type="file"
-                    accept="image/*,application/pdf"
-                    onChange={handleFileChange}
-                  />
                   {inspectionUrl ? (
                     <p className="form-hint">
                       Current file on record: <a href={inspectionUrl} target="_blank" rel="noreferrer">View</a>
                     </p>
-                  ) : null}
+                  ) : (
+                    <p className="form-hint">No inspection file on record.</p>
+                  )}
                 </div>
               </div>
             </div>
