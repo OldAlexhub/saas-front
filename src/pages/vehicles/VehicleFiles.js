@@ -95,7 +95,17 @@ const VehicleFiles = () => {
       try {
         setDownloadingId(file.vehicleId);
         setFileErrors((p) => ({ ...p, [file.vehicleId]: null }));
-        const url = file.downloadUrl || `/vehicles/${file.vehicleId}/inspection`;
+  // Normalize download URL so we don't accidentally double-prefix the API base path
+  // (server may include a leading /api in downloadUrl while our axios instance
+  // already uses baseURL='/api'). If downloadUrl starts with '/api/', strip
+  // that prefix so axios will resolve it correctly. If it's an absolute URL
+  // (http/https) leave it as-is.
+  const rawUrl = file.downloadUrl || `/vehicles/${file.vehicleId}/inspection`;
+  const url = /^https?:\/\//i.test(rawUrl) ? rawUrl : rawUrl.replace(/^\/api/i, '');
+        // Debug: log resolved URL and token presence so we can diagnose failures
+        try {
+          console.debug('[VehicleFiles] download request', { rawUrl, url, baseURL: API.defaults.baseURL, token: !!localStorage.getItem('token') });
+        } catch (e) {}
         const res = await API.get(url, { responseType: 'blob' });
         // Note: API is an axios instance with baseURL=/api; above we trimmed leading /api to avoid double prefixing
         if (res.status !== 200) {
@@ -133,6 +143,12 @@ const VehicleFiles = () => {
         }
         const msg = err.response?.data?.message || err.message || 'Failed to download file. See console for details.';
         setFileErrors((p) => ({ ...p, [file.vehicleId]: msg }));
+        // Provide an alert with server response body if available to aid debugging
+        try {
+          if (err.response && err.response.data) {
+            alert(`Download failed: ${JSON.stringify(err.response.data).slice(0, 200)}`);
+          }
+        } catch (e) {}
         window.dispatchEvent(new CustomEvent('taxiops:pushNotification', { detail: { message: msg, tone: 'warning' } }));
         setDownloadingId(null);
       }

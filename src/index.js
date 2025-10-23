@@ -1,7 +1,7 @@
 import 'bootstrap/dist/css/bootstrap.min.css';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import App from './App';
 import { RealtimeProvider } from './providers/RealtimeProvider';
 
@@ -15,10 +15,19 @@ import './styles/theme.css';
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <BrowserRouter>
       <RealtimeProvider>
-        <App />
+        <RouterProvider
+          router={createBrowserRouter([
+            {
+              // Use a splat parent so nested <Routes> inside <App /> can
+              // match deeper paths like /vehicles/files. This matches the
+              // warning recommending <Route path="*"> for nested routes.
+              path: '*',
+              element: <App />,
+            },
+          ])}
+          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        />
       </RealtimeProvider>
-    </BrowserRouter>
   </React.StrictMode>
 );

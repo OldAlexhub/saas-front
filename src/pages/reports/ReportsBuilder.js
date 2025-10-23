@@ -96,6 +96,9 @@ const ReportsBuilder = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [editingWidgetKey, setEditingWidgetKey] = useState(null);
+  const [widgetDraft, setWidgetDraft] = useState({ dataset: 'bookings', fields: [] });
+  const [fieldSearch, setFieldSearch] = useState('');
 
   useEffect(() => {
     let ignore = false;
@@ -177,6 +180,102 @@ const ReportsBuilder = () => {
       ignore = true;
     };
   }, []);
+
+  // Load persisted canvas widgets from localStorage
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem('reports:canvasWidgets');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) setCanvasWidgets(parsed);
+      }
+    } catch (err) {
+      // ignore parse errors
+    }
+  }, []);
+
+  // Persist canvas widgets when changed
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('reports:canvasWidgets', JSON.stringify(canvasWidgets));
+    } catch (err) {
+      // ignore storage errors
+    }
+  }, [canvasWidgets]);
+
+  const openWidgetConfig = (widget) => {
+    setEditingWidgetKey(widget.key);
+    setWidgetDraft({ dataset: widget.dataset || 'bookings', fields: widget.fields || [] });
+  };
+
+  const saveWidgetConfig = () => {
+    setCanvasWidgets((prev) =>
+      prev.map((w) => (w.key === editingWidgetKey ? { ...w, dataset: widgetDraft.dataset, fields: Array.isArray(widgetDraft.fields) ? widgetDraft.fields : [] } : w)),
+    );
+    setEditingWidgetKey(null);
+  };
+
+  const cancelWidgetConfig = () => {
+    setEditingWidgetKey(null);
+  };
+
+  const getAvailableFields = (datasetKey) => {
+    const rows = datasets[datasetKey] || [];
+    if (!rows.length) return [];
+    // Build union of keys from first N rows for a more complete sample
+    const N = Math.min(50, rows.length);
+    const keySet = new Set();
+    for (let i = 0; i < N; i++) {
+      const row = rows[i] || {};
+      Object.keys(row).forEach((k) => keySet.add(k));
+    }
+    return Array.from(keySet).slice(0, 200);
+  };
+
+  const inferFieldMeta = (datasetKey, field) => {
+    const rows = datasets[datasetKey] || [];
+    if (!rows.length) return { type: 'unknown', sample: '' };
+    let sample = null;
+    let mixed = false;
+    let detected = null;
+    for (const r of rows) {
+      if (!Object.prototype.hasOwnProperty.call(r, field)) continue;
+      const v = r[field];
+      if (v === null || v === undefined) continue;
+      if (sample === null) sample = v;
+      const t = typeof v;
+      if (!detected) detected = t;
+      else if (detected !== t) mixed = true;
+      if (sample != null && detected && !mixed) break;
+    }
+    if (mixed) return { type: 'mixed', sample: sample === null ? '' : String(sample) };
+    if (!detected) return { type: 'null', sample: '' };
+    // further refine
+    if (detected === 'number') return { type: 'number', sample: String(sample) };
+    if (detected === 'boolean') return { type: 'boolean', sample: String(sample) };
+    // check date-ish
+    if (detected === 'string') {
+      // ISO date heuristic
+      const s = String(sample);
+      const iso = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/;
+      if (iso.test(s)) return { type: 'date', sample: s };
+      // numeric string?
+      if (!Number.isNaN(Number(s))) return { type: 'number', sample: s };
+      return { type: 'string', sample: s.slice(0, 80) };
+    }
+    return { type: detected, sample: sample === null ? '' : String(sample) };
+  };
+
+  const toggleField = (field) => {
+    setWidgetDraft((d) => {
+      const set = new Set(d.fields || []);
+      if (set.has(field)) set.delete(field);
+      else set.add(field);
+      return { ...d, fields: Array.from(set) };
+    });
+  };
+
+  
 
 
   const bookingColumns = useMemo(
@@ -396,6 +495,10 @@ const ReportsBuilder = () => {
       return <p className="feedback error" style={{ margin: 0 }}>{error}</p>;
     }
 
+    const datasetKey = widget.dataset || 'bookings';
+    const rows = datasets[datasetKey] || [];
+    const fields = Array.isArray(widget.fields) && widget.fields.length ? widget.fields : null;
+
     switch (widget.id) {
       case 'table':
         return (
@@ -403,21 +506,17 @@ const ReportsBuilder = () => {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Pickup</th>
-                  <th>Customer</th>
-                  <th>Trip</th>
-                  <th>Status</th>
-                  <th>Cab</th>
+                  {(fields || ['_id']).slice(0, 6).map((h) => (
+                    <th key={h}>{humanizeKey(h)}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {datasets.bookings.slice(0, 8).map((booking) => (
-                  <tr key={booking._id || booking.bookingId}>
-                    <td>{booking.pickupTime ? new Date(booking.pickupTime).toLocaleTimeString() : '-'}</td>
-                    <td>{booking.customerName || '-'}</td>
-                    <td>{booking.tripType || 'Booked'}</td>
-                    <td>{booking.status || 'Scheduled'}</td>
-                    <td>{booking.cabNumber || booking.assignedCab || 'Unassigned'}</td>
+                {rows.slice(0, 8).map((row, ri) => (
+                  <tr key={row._id || ri}>
+                    {(fields || ['_id']).slice(0, 6).map((f) => (
+                      <td key={f}>{typeof f === 'string' ? (row[f] ? String(row[f]) : '-') : '-'}</td>
+                    ))}
                   </tr>
                 ))}
               </tbody>
@@ -425,38 +524,33 @@ const ReportsBuilder = () => {
           </div>
         );
       case 'metric':
+        // Simple metric: show counts for the selected dataset
         return (
           <div className="builder-metric-grid">
             <div className="builder-metric-card">
-              <span className="label">Bookings</span>
-              <span className="value">{metricsSnapshot.totalBookings}</span>
-              <span className="meta">
-                {metricsSnapshot.completed} completed · {metricsSnapshot.cancelled} cancelled
-              </span>
-            </div>
-            <div className="builder-metric-card">
-              <span className="label">Drivers</span>
-              <span className="value">{metricsSnapshot.drivers}</span>
-              <span className="meta">{metricsSnapshot.vehicles} vehicles on file</span>
-            </div>
-            <div className="builder-metric-card">
-              <span className="label">Online actives</span>
-              <span className="value">{metricsSnapshot.activeOnline}</span>
-              <span className="meta">Ready to accept rides</span>
+              <span className="label">{humanizeKey(datasetKey)}</span>
+              <span className="value">{rows.length}</span>
+              <span className="meta">Preview of {rows.length} records</span>
             </div>
           </div>
         );
       case 'chart':
+        // Very small chart: histogram of a chosen field if provided
+        if (!fields || !fields.length) return <p className="panel-subtitle">Configure a field to chart.</p>;
+        const field = fields[0];
+        const counts = rows.reduce((acc, r) => {
+          const v = r?.[field] ?? 'Unknown';
+          acc[v] = (acc[v] || 0) + 1;
+          return acc;
+        }, {});
         return (
           <div className="builder-chart-rows">
-            {bookingStatusSeries.map(([status, count]) => {
-              const percent = datasets.bookings.length
-                ? Math.round((count / datasets.bookings.length) * 100)
-                : 0;
+            {Object.entries(counts).slice(0, 8).map(([k, count]) => {
+              const percent = rows.length ? Math.round((count / rows.length) * 100) : 0;
               return (
-                <div key={status} className="builder-chart-row">
+                <div key={k} className="builder-chart-row">
                   <div className="meta">
-                    <span>{status}</span>
+                    <span>{String(k)}</span>
                     <span>{count}</span>
                   </div>
                   <div className="builder-chart-bar">
@@ -465,9 +559,6 @@ const ReportsBuilder = () => {
                 </div>
               );
             })}
-            {bookingStatusSeries.length === 0 && (
-              <p className="panel-subtitle">No bookings available to chart.</p>
-            )}
           </div>
         );
       case 'map':
@@ -475,18 +566,10 @@ const ReportsBuilder = () => {
           <div className="builder-map-summary">
             <div className="stats">
               <span>
-                Online: <strong>{activeSummary.online}</strong>
-              </span>
-              <span>
-                Offline: <strong>{activeSummary.offline}</strong>
-              </span>
-              <span>
-                Inactive: <strong>{activeSummary.inactive}</strong>
+                Records: <strong>{rows.length}</strong>
               </span>
             </div>
-            <p className="note">
-              Coming soon: drop this onto a live map powered by the fleet tracker.
-            </p>
+            <p className="note">Map preview is disabled in this lightweight builder. Configure dataset/fields for export.</p>
           </div>
         );
       default:
@@ -536,7 +619,12 @@ const ReportsBuilder = () => {
           ) : (
             canvasWidgets.map((widget) => (
               <div key={widget.key} className="builder-widget-card">
-                <strong>{widget.label}</strong>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <strong>{widget.label}</strong>
+                  <div>
+                    <button type="button" className="btn btn-ghost" onClick={() => openWidgetConfig(widget)}>Configure</button>
+                  </div>
+                </div>
                 {renderWidgetContent(widget)}
               </div>
             ))
@@ -550,6 +638,68 @@ const ReportsBuilder = () => {
           <span className="panel-subtitle">Export any dataset to CSV for quick Excel analysis.</span>
         </div>
         <div className="panel-body" style={{ paddingBottom: 0 }}>
+          {editingWidgetKey && (
+            <div style={{ marginBottom: 12, padding: 12, border: '1px solid #eee', borderRadius: 8 }}>
+              <strong>Widget configuration</strong>
+              <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
+                <label style={{ fontSize: 12 }}>Dataset</label>
+                <select value={widgetDraft.dataset} onChange={(e) => setWidgetDraft((d) => ({ ...d, dataset: e.target.value }))}>
+                  <option value="bookings">Bookings</option>
+                  <option value="drivers">Drivers</option>
+                  <option value="vehicles">Vehicles</option>
+                  <option value="driverTimeline">DriverTimeline</option>
+                  <option value="actives">Actives</option>
+                </select>
+                <label style={{ fontSize: 12 }}>Fields</label>
+                <div style={{ display: 'flex', gap: 8, flexDirection: 'column' }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <input
+                      value={fieldSearch}
+                      onChange={(e) => setFieldSearch(e.target.value)}
+                      placeholder="Search fields..."
+                      style={{ padding: '6px 8px', minWidth: 200 }}
+                    />
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {/* quick-select common fields for bookings */}
+                      {widgetDraft.dataset === 'bookings' && (
+                        <button
+                          type="button"
+                          className="btn btn-ghost"
+                          onClick={() => {
+                            const avail = getAvailableFields('bookings');
+                            const pick = BOOKING_COLUMN_PRIORITY.filter((k) => avail.includes(k)).slice(0, 6);
+                            setWidgetDraft((d) => ({ ...d, fields: Array.from(new Set([...(d.fields||[]), ...pick])) }));
+                          }}
+                        >
+                          Quick select common
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ maxHeight: 160, overflow: 'auto', paddingTop: 8 }}>
+                    {getAvailableFields(widgetDraft.dataset)
+                      .filter((f) => f.toLowerCase().includes(fieldSearch.toLowerCase()))
+                      .map((f) => {
+                        const meta = inferFieldMeta(widgetDraft.dataset, f);
+                        return (
+                          <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
+                            <input type="checkbox" checked={(widgetDraft.fields || []).includes(f)} onChange={() => toggleField(f)} />
+                            <div style={{ minWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f}</div>
+                            <div style={{ color: '#666', fontSize: 12 }}>{meta.type}</div>
+                            <div style={{ color: '#999', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis' }}>{meta.sample}</div>
+                          </div>
+                        );
+                      })}
+                    {getAvailableFields(widgetDraft.dataset).length === 0 && (
+                      <div style={{ color: '#666' }}>No sample fields available for this dataset yet.</div>
+                    )}
+                  </div>
+                </div>
+                <button type="button" className="btn" onClick={saveWidgetConfig}>Save</button>
+                <button type="button" className="btn btn-ghost" onClick={cancelWidgetConfig}>Cancel</button>
+              </div>
+            </div>
+          )}
           {loading ? (
             <div className="skeleton" style={{ height: '140px', borderRadius: '12px' }} />
           ) : error ? (
