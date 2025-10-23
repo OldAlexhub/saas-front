@@ -97,8 +97,17 @@ const ReportsBuilder = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [editingWidgetKey, setEditingWidgetKey] = useState(null);
-  const [widgetDraft, setWidgetDraft] = useState({ dataset: 'bookings', fields: [] });
-  const [fieldSearch, setFieldSearch] = useState('');
+  const [widgetDraft, setWidgetDraft] = useState({ dataset: 'bookings' });
+  const [dashboards, setDashboards] = useState(() => {
+    try {
+      const raw = window.localStorage.getItem('reports:dashboards');
+      return raw ? JSON.parse(raw) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+  const [activeDashboard, setActiveDashboard] = useState(() => window.localStorage.getItem('reports:activeDashboard') || 'default');
+  const [dashboardName, setDashboardName] = useState('');
 
   useEffect(() => {
     let ignore = false;
@@ -205,12 +214,24 @@ const ReportsBuilder = () => {
 
   const openWidgetConfig = (widget) => {
     setEditingWidgetKey(widget.key);
-    setWidgetDraft({ dataset: widget.dataset || 'bookings', fields: widget.fields || [] });
+    setWidgetDraft({ dataset: widget.dataset || 'bookings', title: widget.title || widget.label, size: widget.size || 'medium' });
   };
 
   const saveWidgetConfig = () => {
     setCanvasWidgets((prev) =>
-      prev.map((w) => (w.key === editingWidgetKey ? { ...w, dataset: widgetDraft.dataset, fields: Array.isArray(widgetDraft.fields) ? widgetDraft.fields : [] } : w)),
+      prev.map((w) => {
+        if (w.key !== editingWidgetKey) return w;
+        // choose default fields: for bookings use priority list, otherwise first N keys from sample
+        let defaultFields = [];
+        if (widgetDraft.dataset === 'bookings') {
+          const avail = getAvailableFields('bookings');
+          defaultFields = BOOKING_COLUMN_PRIORITY.filter((k) => avail.includes(k)).slice(0, 6);
+        } else {
+          const avail = getAvailableFields(widgetDraft.dataset);
+          defaultFields = avail.slice(0, 6);
+        }
+        return { ...w, dataset: widgetDraft.dataset, fields: defaultFields, title: widgetDraft.title, size: widgetDraft.size };
+      }),
     );
     setEditingWidgetKey(null);
   };
@@ -222,48 +243,8 @@ const ReportsBuilder = () => {
   const getAvailableFields = (datasetKey) => {
     const rows = datasets[datasetKey] || [];
     if (!rows.length) return [];
-    // Build union of keys from first N rows for a more complete sample
-    const N = Math.min(50, rows.length);
-    const keySet = new Set();
-    for (let i = 0; i < N; i++) {
-      const row = rows[i] || {};
-      Object.keys(row).forEach((k) => keySet.add(k));
-    }
-    return Array.from(keySet).slice(0, 200);
-  };
-
-  const inferFieldMeta = (datasetKey, field) => {
-    const rows = datasets[datasetKey] || [];
-    if (!rows.length) return { type: 'unknown', sample: '' };
-    let sample = null;
-    let mixed = false;
-    let detected = null;
-    for (const r of rows) {
-      if (!Object.prototype.hasOwnProperty.call(r, field)) continue;
-      const v = r[field];
-      if (v === null || v === undefined) continue;
-      if (sample === null) sample = v;
-      const t = typeof v;
-      if (!detected) detected = t;
-      else if (detected !== t) mixed = true;
-      if (sample != null && detected && !mixed) break;
-    }
-    if (mixed) return { type: 'mixed', sample: sample === null ? '' : String(sample) };
-    if (!detected) return { type: 'null', sample: '' };
-    // further refine
-    if (detected === 'number') return { type: 'number', sample: String(sample) };
-    if (detected === 'boolean') return { type: 'boolean', sample: String(sample) };
-    // check date-ish
-    if (detected === 'string') {
-      // ISO date heuristic
-      const s = String(sample);
-      const iso = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/;
-      if (iso.test(s)) return { type: 'date', sample: s };
-      // numeric string?
-      if (!Number.isNaN(Number(s))) return { type: 'number', sample: s };
-      return { type: 'string', sample: s.slice(0, 80) };
-    }
-    return { type: detected, sample: sample === null ? '' : String(sample) };
+    const first = rows[0] || {};
+    return Object.keys(first).slice(0, 40);
   };
 
   const toggleField = (field) => {
@@ -477,7 +458,46 @@ const ReportsBuilder = () => {
 
     try {
       const widget = JSON.parse(data);
-      setCanvasWidgets((prev) => [...prev, { ...widget, key: `${widget.id}-${Date.now()}` }]);
+      // Auto-configure sensible defaults for non-expert users
+      const getDefaultsForWidget = (id) => {
+        switch (id) {
+          case 'table': {
+            const dataset = 'bookings';
+            const avail = getAvailableFields(dataset);
+            const fields = BOOKING_COLUMN_PRIORITY.filter((k) => avail.includes(k)).slice(0, 6);
+            return { dataset, fields };
+          }
+          case 'metric': {
+            const dataset = 'bookings';
+            const fields = []; // metric shows count by dataset
+            return { dataset, fields };
+          }
+          case 'chart': {
+            const dataset = 'bookings';
+            const fields = availIncludes('status') ? ['status'] : ['tripType'];
+            return { dataset, fields };
+          }
+          case 'map': {
+            const dataset = 'driverTimeline';
+            const fields = ['point'];
+            return { dataset, fields };
+          }
+          default: {
+            const dataset = 'bookings';
+            const avail = getAvailableFields(dataset);
+            return { dataset, fields: avail.slice(0, 6) };
+          }
+        }
+      };
+
+      // helper to test availability of 'status' field
+      const availIncludes = (f) => {
+        const avail = getAvailableFields('bookings');
+        return avail.includes(f);
+      };
+
+      const defaults = getDefaultsForWidget(widget.id);
+      setCanvasWidgets((prev) => [...prev, { ...widget, key: `${widget.id}-${Date.now()}`, dataset: defaults.dataset, fields: defaults.fields }]);
     } catch {
       // ignore malformed drops
     }
@@ -582,6 +602,36 @@ const ReportsBuilder = () => {
       title="Report designer"
       subtitle="Assemble dashboards for leadership, export datasets and share actionable insights."
     >
+      <div className="builder-top-controls">
+        <div className="builder-top-inner">
+          <select value={activeDashboard} onChange={(e) => { setActiveDashboard(e.target.value); window.localStorage.setItem('reports:activeDashboard', e.target.value); }}>
+            <option value="default">Default</option>
+            {Object.keys(dashboards).map((k) => (
+              <option key={k} value={k}>{k}</option>
+            ))}
+          </select>
+          <input placeholder="New dashboard name" value={dashboardName} onChange={(e) => setDashboardName(e.target.value)} />
+          <button type="button" className="btn" onClick={() => {
+            if (!dashboardName) return;
+            const newDash = { ...(dashboards || {}), [dashboardName]: canvasWidgets };
+            setDashboards(newDash);
+            window.localStorage.setItem('reports:dashboards', JSON.stringify(newDash));
+            setDashboardName('');
+          }}>Save dashboard</button>
+          <button type="button" className="btn btn-ghost" onClick={() => {
+            const dash = dashboards[activeDashboard];
+            if (dash) setCanvasWidgets(dash);
+          }}>Load</button>
+          <button type="button" className="btn btn-danger" onClick={() => {
+            if (!dashboards[activeDashboard]) return;
+            const copy = { ...dashboards };
+            delete copy[activeDashboard];
+            setDashboards(copy);
+            window.localStorage.setItem('reports:dashboards', JSON.stringify(copy));
+            setActiveDashboard('default');
+          }}>Delete</button>
+        </div>
+      </div>
       <div className="builder-layout">
         <aside className="panel builder-sidebar">
           <div className="panel-header">
@@ -615,17 +665,26 @@ const ReportsBuilder = () => {
           onDragOver={handleDragOver}
         >
           {canvasWidgets.length === 0 ? (
-            <div>Drag widgets here to start designing your report.</div>
+            <div className="drop-hint">
+              <strong>Drag widgets here to start designing your report</strong>
+              <p>Drop a Booking table, KPI tile, Trend chart or Geo map to begin.</p>
+            </div>
           ) : (
             canvasWidgets.map((widget) => (
-              <div key={widget.key} className="builder-widget-card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <strong>{widget.label}</strong>
-                  <div>
+              <div key={widget.key} className={`builder-widget-card size-${widget.size || 'medium'}`}>
+                <div className="widget-header">
+                  <div className="widget-title">{widget.title || widget.label}</div>
+                  <div className="widget-controls">
                     <button type="button" className="btn btn-ghost" onClick={() => openWidgetConfig(widget)}>Configure</button>
+                    <button type="button" className="btn btn-ghost" onClick={() => {
+                      // remove widget
+                      setCanvasWidgets((prev) => prev.filter((w) => w.key !== widget.key));
+                    }}>Delete</button>
                   </div>
                 </div>
-                {renderWidgetContent(widget)}
+                <div className="widget-body">
+                  {renderWidgetContent(widget)}
+                </div>
               </div>
             ))
           )}
@@ -650,51 +709,8 @@ const ReportsBuilder = () => {
                   <option value="driverTimeline">DriverTimeline</option>
                   <option value="actives">Actives</option>
                 </select>
-                <label style={{ fontSize: 12 }}>Fields</label>
-                <div style={{ display: 'flex', gap: 8, flexDirection: 'column' }}>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <input
-                      value={fieldSearch}
-                      onChange={(e) => setFieldSearch(e.target.value)}
-                      placeholder="Search fields..."
-                      style={{ padding: '6px 8px', minWidth: 200 }}
-                    />
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      {/* quick-select common fields for bookings */}
-                      {widgetDraft.dataset === 'bookings' && (
-                        <button
-                          type="button"
-                          className="btn btn-ghost"
-                          onClick={() => {
-                            const avail = getAvailableFields('bookings');
-                            const pick = BOOKING_COLUMN_PRIORITY.filter((k) => avail.includes(k)).slice(0, 6);
-                            setWidgetDraft((d) => ({ ...d, fields: Array.from(new Set([...(d.fields||[]), ...pick])) }));
-                          }}
-                        >
-                          Quick select common
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  <div style={{ maxHeight: 160, overflow: 'auto', paddingTop: 8 }}>
-                    {getAvailableFields(widgetDraft.dataset)
-                      .filter((f) => f.toLowerCase().includes(fieldSearch.toLowerCase()))
-                      .map((f) => {
-                        const meta = inferFieldMeta(widgetDraft.dataset, f);
-                        return (
-                          <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
-                            <input type="checkbox" checked={(widgetDraft.fields || []).includes(f)} onChange={() => toggleField(f)} />
-                            <div style={{ minWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f}</div>
-                            <div style={{ color: '#666', fontSize: 12 }}>{meta.type}</div>
-                            <div style={{ color: '#999', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis' }}>{meta.sample}</div>
-                          </div>
-                        );
-                      })}
-                    {getAvailableFields(widgetDraft.dataset).length === 0 && (
-                      <div style={{ color: '#666' }}>No sample fields available for this dataset yet.</div>
-                    )}
-                  </div>
-                </div>
+                <label style={{ fontSize: 12 }}>Columns</label>
+                <div style={{ color: '#666', fontSize: 12 }}>{getAvailableFields(widgetDraft.dataset).slice(0, 6).join(', ') || 'Auto'}</div>
                 <button type="button" className="btn" onClick={saveWidgetConfig}>Save</button>
                 <button type="button" className="btn btn-ghost" onClick={cancelWidgetConfig}>Cancel</button>
               </div>
