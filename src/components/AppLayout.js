@@ -435,7 +435,10 @@ const AppLayout = ({ title, subtitle, actions, children }) => {
           </div>
           {actions && <div className="header-actions">{actions}</div>}
         </header>
-        <main className="app-main">{children}</main>
+          <main className="app-main">{children}</main>
+          <footer className="app-footer">
+            <div className="app-footer-inner">© {new Date().getFullYear()} Developed and owned by Old Alex Hub, a Florida, USA LLC</div>
+          </footer>
       </div>
     </div>
   );
