@@ -10,6 +10,29 @@ import { getCompanyProfile } from '../../services/companyService';
 import { getFare, listFlatRates } from '../../services/fareService';
 import { getMapboxTileLayer } from '../../utils/mapbox';
 
+// A small lookup of representative lat/lng centers for common US states.
+// If you need more accurate state-centroids or full coverage, consider
+// replacing this with a table of official state centroid coordinates.
+const STATE_CENTERS = {
+  FL: { lat: 27.9944024, lng: -81.7602544 }, // Florida center
+  CO: { lat: 39.113014, lng: -105.358887 }, // Colorado approximate center
+  CA: { lat: 37.160316, lng: -119.338, },
+  NY: { lat: 42.9543, lng: -75.5262 },
+  TX: { lat: 31.054487, lng: -99.5632 },
+  IL: { lat: 40.0631, lng: -89.3397 },
+  GA: { lat: 32.1656, lng: -82.9001 },
+  WA: { lat: 47.4009, lng: -120.5880 },
+  OR: { lat: 43.8041, lng: -120.5542 },
+  AZ: { lat: 34.0489, lng: -111.0937 },
+  NM: { lat: 34.3071, lng: -106.0186 },
+};
+
+function getStateCenter(code) {
+  if (!code) return null;
+  const c = String(code).trim().toUpperCase();
+  return STATE_CENTERS[c] || null;
+}
+
 /**
  * Form to create a new booking. Captures basic booking information
  * required by the backend. After successful creation it navigates back to
@@ -98,8 +121,8 @@ const BookingsCreate = () => {
   const [loadingFlatRates, setLoadingFlatRates] = useState(false);
   const [flatRateLoadError, setFlatRateLoadError] = useState('');
 
-  // Default map position (Kissimmee, FL)
-  const defaultCenter = useMemo(() => ({ lat: 28.2919557, lng: -81.4075713 }), []);
+  // Default map position (Kissimmee, FL) — can be overridden by company service area
+  const [defaultCenter, setDefaultCenter] = useState({ lat: 28.2919557, lng: -81.4075713 });
   const [pickupPosition, setPickupPosition] = useState(null);
   const [dropoffPosition, setDropoffPosition] = useState(null);
   const [mapFocus, setMapFocus] = useState('pickup');
@@ -144,6 +167,16 @@ const BookingsCreate = () => {
         const configured = company?.dispatchSettings?.maxDistanceMiles;
         if (!ignore && Number.isFinite(Number(configured)) && Number(configured) > 0) {
           setNearbyRadiusMiles(Number(configured));
+        }
+        // If company has allowedStates configured, bias default map center to the
+        // first allowed state. This prevents the booking map and geocoding from
+        // defaulting to Florida when the service is configured for another state
+        // (e.g., Colorado).
+        const allowed = Array.isArray(company?.allowedStates) ? company.allowedStates : null;
+        if (!ignore && allowed && allowed.length > 0) {
+          const stateCode = String(allowed[0]).trim().toUpperCase();
+          const stateCenter = getStateCenter(stateCode);
+          if (stateCenter) setDefaultCenter(stateCenter);
         }
       } catch (err) {
         // ignore - keep defaults

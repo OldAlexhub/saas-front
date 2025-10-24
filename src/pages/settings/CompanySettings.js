@@ -84,10 +84,9 @@ const CompanySettings = () => {
   ];
 
   const handleAllowedStatesChange = (event) => {
-    // support multi-select: collect selected option values into an array
-    const options = Array.from(event.target.selectedOptions || []);
-    const values = options.map((o) => o.value);
-    setForm((prev) => ({ ...prev, allowedStates: values }));
+    // single-select: store selected value as a one-element array to match server shape
+    const value = event.target.value || '';
+    setForm((prev) => ({ ...prev, allowedStates: value ? [value] : [] }));
   };
 
   const handleSubmit = async (event) => {
@@ -231,22 +230,22 @@ const CompanySettings = () => {
                 <h4>Service area</h4>
                 <p className="panel-subtitle">Select the US states where this service will operate.</p>
                 <div style={{ marginBottom: '12px' }}>
-                  <label htmlFor="allowedStates">Allowed states</label>
+                  <label htmlFor="allowedStates">Service state</label>
                   <select
                     id="allowedStates"
                     name="allowedStates"
-                    multiple
-                    value={Array.isArray(form.allowedStates) ? form.allowedStates : []}
+                    value={Array.isArray(form.allowedStates) ? form.allowedStates[0] || '' : ''}
                     onChange={handleAllowedStatesChange}
-                    style={{ minHeight: '140px', width: '100%', marginTop: '8px' }}
+                    style={{ width: '100%', marginTop: '8px' }}
                   >
+                    <option value="">Select a state</option>
                     {STATE_OPTIONS.map((s) => (
                       <option key={s.code} value={s.code}>
                         {s.label} ({s.code})
                       </option>
                     ))}
                   </select>
-                  <p className="hint">Hold Ctrl/Cmd (or Shift) to select multiple states.</p>
+                  <p className="hint">Select the single US state where this service will operate.</p>
                 </div>
 
                 <h4>Dispatch settings</h4>
