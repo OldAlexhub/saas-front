@@ -10,6 +10,7 @@ const defaultForm = {
   website: '',
   logoUrl: '',
   notes: '',
+  allowedStates: ['FL'],
   dispatchSettings: {
     maxDistanceMiles: 6,
     maxCandidates: 20,
@@ -43,6 +44,7 @@ const CompanySettings = () => {
             website: data.website || '',
             logoUrl: data.logoUrl || '',
             notes: data.notes || '',
+            allowedStates: Array.isArray(data.allowedStates) && data.allowedStates.length > 0 ? data.allowedStates : defaultForm.allowedStates,
             dispatchSettings: {
               maxDistanceMiles: data.dispatchSettings?.maxDistanceMiles ?? defaultForm.dispatchSettings.maxDistanceMiles,
               maxCandidates: data.dispatchSettings?.maxCandidates ?? defaultForm.dispatchSettings.maxCandidates,
@@ -74,6 +76,18 @@ const CompanySettings = () => {
       ...prev,
       [name]: value,
     }));
+  };
+
+  // Full list of US states (codes and labels) for the multi-select.
+  const STATE_OPTIONS = [
+    { code: 'AL', label: 'Alabama' },{ code: 'AK', label: 'Alaska' },{ code: 'AZ', label: 'Arizona' },{ code: 'AR', label: 'Arkansas' },{ code: 'CA', label: 'California' },{ code: 'CO', label: 'Colorado' },{ code: 'CT', label: 'Connecticut' },{ code: 'DE', label: 'Delaware' },{ code: 'DC', label: 'District of Columbia' },{ code: 'FL', label: 'Florida' },{ code: 'GA', label: 'Georgia' },{ code: 'HI', label: 'Hawaii' },{ code: 'ID', label: 'Idaho' },{ code: 'IL', label: 'Illinois' },{ code: 'IN', label: 'Indiana' },{ code: 'IA', label: 'Iowa' },{ code: 'KS', label: 'Kansas' },{ code: 'KY', label: 'Kentucky' },{ code: 'LA', label: 'Louisiana' },{ code: 'ME', label: 'Maine' },{ code: 'MD', label: 'Maryland' },{ code: 'MA', label: 'Massachusetts' },{ code: 'MI', label: 'Michigan' },{ code: 'MN', label: 'Minnesota' },{ code: 'MS', label: 'Mississippi' },{ code: 'MO', label: 'Missouri' },{ code: 'MT', label: 'Montana' },{ code: 'NE', label: 'Nebraska' },{ code: 'NV', label: 'Nevada' },{ code: 'NH', label: 'New Hampshire' },{ code: 'NJ', label: 'New Jersey' },{ code: 'NM', label: 'New Mexico' },{ code: 'NY', label: 'New York' },{ code: 'NC', label: 'North Carolina' },{ code: 'ND', label: 'North Dakota' },{ code: 'OH', label: 'Ohio' },{ code: 'OK', label: 'Oklahoma' },{ code: 'OR', label: 'Oregon' },{ code: 'PA', label: 'Pennsylvania' },{ code: 'RI', label: 'Rhode Island' },{ code: 'SC', label: 'South Carolina' },{ code: 'SD', label: 'South Dakota' },{ code: 'TN', label: 'Tennessee' },{ code: 'TX', label: 'Texas' },{ code: 'UT', label: 'Utah' },{ code: 'VT', label: 'Vermont' },{ code: 'VA', label: 'Virginia' },{ code: 'WA', label: 'Washington' },{ code: 'WV', label: 'West Virginia' },{ code: 'WI', label: 'Wisconsin' },{ code: 'WY', label: 'Wyoming' }
+  ];
+
+  const handleAllowedStatesChange = (event) => {
+    // support multi-select: collect selected option values into an array
+    const options = Array.from(event.target.selectedOptions || []);
+    const values = options.map((o) => o.value);
+    setForm((prev) => ({ ...prev, allowedStates: values }));
   };
 
   const handleSubmit = async (event) => {
@@ -214,6 +228,27 @@ const CompanySettings = () => {
               </div>
 
               <div className="panel-section">
+                <h4>Service area</h4>
+                <p className="panel-subtitle">Select the US states where this service will operate.</p>
+                <div style={{ marginBottom: '12px' }}>
+                  <label htmlFor="allowedStates">Allowed states</label>
+                  <select
+                    id="allowedStates"
+                    name="allowedStates"
+                    multiple
+                    value={Array.isArray(form.allowedStates) ? form.allowedStates : []}
+                    onChange={handleAllowedStatesChange}
+                    style={{ minHeight: '140px', width: '100%', marginTop: '8px' }}
+                  >
+                    {STATE_OPTIONS.map((s) => (
+                      <option key={s.code} value={s.code}>
+                        {s.label} ({s.code})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="hint">Hold Ctrl/Cmd (or Shift) to select multiple states.</p>
+                </div>
+
                 <h4>Dispatch settings</h4>
                 <p className="panel-subtitle">Controls used for automatic dispatch behavior (radial search).</p>
                 <div className="form-grid">
