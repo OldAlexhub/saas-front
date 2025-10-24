@@ -596,13 +596,18 @@ const BookingsCreate = () => {
       setNearbyError('');
 
       try {
-        const response = await listActives({
+        const params = {
           status: 'Active',
           availability: 'Online',
           lat: pickupPosition.lat,
           lng: pickupPosition.lng,
           radius: nearbyRadiusMeters,
-        });
+        };
+        // Log request params to help diagnose empty results in production/dev
+        // (can be removed once root cause is confirmed).
+        // eslint-disable-next-line no-console
+        console.debug('Listing nearby actives with params', params);
+        const response = await listActives(params);
 
         const payload =
           response.data?.data ||
@@ -630,6 +635,8 @@ const BookingsCreate = () => {
           .slice(0, 12);
 
         if (!ignore && nearbyRequestRef.current === requestId) {
+          // eslint-disable-next-line no-console
+          console.debug(`Nearby drivers payload count: ${Array.isArray(payload) ? payload.length : 0}`);
           setNearbyDrivers(roster);
         }
       } catch (nearbyErr) {
@@ -652,7 +659,7 @@ const BookingsCreate = () => {
     return () => {
       ignore = true;
     };
-  }, [pickupPosition, normalizeActiveRecord]);
+  }, [pickupPosition, normalizeActiveRecord, nearbyRadiusMeters]);
 
   const passengerCount = useMemo(() => {
     const parsed = Number(form.passengers);
