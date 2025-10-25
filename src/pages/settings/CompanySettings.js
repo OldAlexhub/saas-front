@@ -16,6 +16,14 @@ const defaultForm = {
     maxCandidates: 20,
     distanceStepsMiles: '1,2,3,4,5,6',
   },
+    hosSettings: {
+      MAX_ON_DUTY_HOURS: 12,
+      REQUIRED_OFF_DUTY_HOURS: 12,
+      LOOKBACK_WINDOW_HOURS: 24,
+      RECORD_RETENTION_MONTHS: 12,
+      ALLOW_ALTERNATE_RULES: false,
+      ALERT_THRESHOLD_HOURS: 11.5,
+    },
 };
 
 const CompanySettings = () => {
@@ -48,10 +56,18 @@ const CompanySettings = () => {
             dispatchSettings: {
               maxDistanceMiles: data.dispatchSettings?.maxDistanceMiles ?? defaultForm.dispatchSettings.maxDistanceMiles,
               maxCandidates: data.dispatchSettings?.maxCandidates ?? defaultForm.dispatchSettings.maxCandidates,
-              distanceStepsMiles: Array.isArray(data.dispatchSettings?.distanceStepsMiles)
-                ? (data.dispatchSettings.distanceStepsMiles.join(',') )
-                : defaultForm.dispatchSettings.distanceStepsMiles,
+                distanceStepsMiles: Array.isArray(data.dispatchSettings?.distanceStepsMiles)
+                  ? (data.dispatchSettings.distanceStepsMiles.join(',') )
+                  : defaultForm.dispatchSettings.distanceStepsMiles,
             },
+              hosSettings: {
+                MAX_ON_DUTY_HOURS: data.hosSettings?.MAX_ON_DUTY_HOURS ?? defaultForm.hosSettings.MAX_ON_DUTY_HOURS,
+                REQUIRED_OFF_DUTY_HOURS: data.hosSettings?.REQUIRED_OFF_DUTY_HOURS ?? defaultForm.hosSettings.REQUIRED_OFF_DUTY_HOURS,
+                LOOKBACK_WINDOW_HOURS: data.hosSettings?.LOOKBACK_WINDOW_HOURS ?? defaultForm.hosSettings.LOOKBACK_WINDOW_HOURS,
+                RECORD_RETENTION_MONTHS: data.hosSettings?.RECORD_RETENTION_MONTHS ?? defaultForm.hosSettings.RECORD_RETENTION_MONTHS,
+                ALLOW_ALTERNATE_RULES: data.hosSettings?.ALLOW_ALTERNATE_RULES ?? defaultForm.hosSettings.ALLOW_ALTERNATE_RULES,
+                ALERT_THRESHOLD_HOURS: data.hosSettings?.ALERT_THRESHOLD_HOURS ?? defaultForm.hosSettings.ALERT_THRESHOLD_HOURS,
+              },
           });
         }
       } catch (err) {
@@ -112,6 +128,22 @@ const CompanySettings = () => {
           .filter((n) => Number.isFinite(n) && n > 0);
         ds.distanceStepsMiles = stepsRaw;
         payload.dispatchSettings = ds;
+        // Parse HOS settings
+        if (form.hosSettings) {
+          const h = {};
+          const maxOn = Number(form.hosSettings.MAX_ON_DUTY_HOURS);
+          if (Number.isFinite(maxOn)) h.MAX_ON_DUTY_HOURS = maxOn;
+          const reqOff = Number(form.hosSettings.REQUIRED_OFF_DUTY_HOURS);
+          if (Number.isFinite(reqOff)) h.REQUIRED_OFF_DUTY_HOURS = reqOff;
+          const look = Number(form.hosSettings.LOOKBACK_WINDOW_HOURS);
+          if (Number.isFinite(look)) h.LOOKBACK_WINDOW_HOURS = look;
+          const retain = Number(form.hosSettings.RECORD_RETENTION_MONTHS);
+          if (Number.isFinite(retain)) h.RECORD_RETENTION_MONTHS = retain;
+          h.ALLOW_ALTERNATE_RULES = Boolean(form.hosSettings.ALLOW_ALTERNATE_RULES);
+          const alertH = Number(form.hosSettings.ALERT_THRESHOLD_HOURS);
+          if (Number.isFinite(alertH)) h.ALERT_THRESHOLD_HOURS = alertH;
+          payload.hosSettings = h;
+        }
       }
 
       await updateCompanyProfile(payload);
@@ -255,23 +287,21 @@ const CompanySettings = () => {
                     <label htmlFor="maxDistanceMiles">Max distance (miles)</label>
                     <input
                       id="maxDistanceMiles"
-                      name="dispatchSettings.maxDistanceMiles"
                       type="number"
                       step="0.1"
                       min="0"
                       value={form.dispatchSettings?.maxDistanceMiles ?? ''}
-                      onChange={handleChange}
+                      onChange={(e) => setForm((p) => ({ ...p, dispatchSettings: { ...p.dispatchSettings, maxDistanceMiles: e.target.value } }))}
                     />
                   </div>
                   <div>
                     <label htmlFor="maxCandidates">Max candidates</label>
                     <input
                       id="maxCandidates"
-                      name="dispatchSettings.maxCandidates"
                       type="number"
                       min="1"
                       value={form.dispatchSettings?.maxCandidates ?? ''}
-                      onChange={handleChange}
+                      onChange={(e) => setForm((p) => ({ ...p, dispatchSettings: { ...p.dispatchSettings, maxCandidates: e.target.value } }))}
                     />
                   </div>
                 </div>
@@ -279,13 +309,90 @@ const CompanySettings = () => {
                   <label htmlFor="distanceStepsMiles">Distance steps (miles)</label>
                   <input
                     id="distanceStepsMiles"
-                    name="dispatchSettings.distanceStepsMiles"
                     type="text"
                     value={form.dispatchSettings?.distanceStepsMiles ?? ''}
-                    onChange={handleChange}
+                    onChange={(e) => setForm((p) => ({ ...p, dispatchSettings: { ...p.dispatchSettings, distanceStepsMiles: e.target.value } }))}
                     placeholder="Comma-separated e.g. 1,2,3,4"
                   />
                   <p className="hint">Comma-separated list of radial search distances in miles. Values will be sanitized.</p>
+                </div>
+                
+                <h4>Hours-of-Service (HOS) settings</h4>
+                <p className="panel-subtitle">Configure driver hours-of-service rules used by the driver app and compliance checks.</p>
+                <div className="form-grid">
+                  <div>
+                    <label htmlFor="MAX_ON_DUTY_HOURS">Max on-duty hours</label>
+                    <input
+                      id="MAX_ON_DUTY_HOURS"
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      value={form.hosSettings?.MAX_ON_DUTY_HOURS ?? ''}
+                      onChange={(e) => setForm((p) => ({ ...p, hosSettings: { ...p.hosSettings, MAX_ON_DUTY_HOURS: e.target.value } }))}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="REQUIRED_OFF_DUTY_HOURS">Required off-duty hours</label>
+                    <input
+                      id="REQUIRED_OFF_DUTY_HOURS"
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      value={form.hosSettings?.REQUIRED_OFF_DUTY_HOURS ?? ''}
+                      onChange={(e) => setForm((p) => ({ ...p, hosSettings: { ...p.hosSettings, REQUIRED_OFF_DUTY_HOURS: e.target.value } }))}
+                    />
+                  </div>
+                </div>
+                <div className="form-grid">
+                  <div>
+                    <label htmlFor="LOOKBACK_WINDOW_HOURS">Lookback window (hours)</label>
+                    <input
+                      id="LOOKBACK_WINDOW_HOURS"
+                      type="number"
+                      step="1"
+                      min="1"
+                      value={form.hosSettings?.LOOKBACK_WINDOW_HOURS ?? ''}
+                      onChange={(e) => setForm((p) => ({ ...p, hosSettings: { ...p.hosSettings, LOOKBACK_WINDOW_HOURS: e.target.value } }))}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="RECORD_RETENTION_MONTHS">Record retention (months)</label>
+                    <input
+                      id="RECORD_RETENTION_MONTHS"
+                      type="number"
+                      step="1"
+                      min="1"
+                      value={form.hosSettings?.RECORD_RETENTION_MONTHS ?? ''}
+                      onChange={(e) => setForm((p) => ({ ...p, hosSettings: { ...p.hosSettings, RECORD_RETENTION_MONTHS: e.target.value } }))}
+                    />
+                  </div>
+                </div>
+                <div className="form-grid">
+                  <div>
+                    <label htmlFor="ALLOW_ALTERNATE_RULES">Allow alternate rules</label>
+                    <div style={{ marginTop: '8px' }}>
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                        <input
+                          id="ALLOW_ALTERNATE_RULES"
+                          type="checkbox"
+                          checked={Boolean(form.hosSettings?.ALLOW_ALTERNATE_RULES)}
+                          onChange={(e) => setForm((p) => ({ ...p, hosSettings: { ...p.hosSettings, ALLOW_ALTERNATE_RULES: e.target.checked } }))}
+                        />
+                        <span className="hint">Enable only if taxicab rules allow the 15/10/70 alternate cycle.</span>
+                      </label>
+                    </div>
+                  </div>
+                  <div>
+                    <label htmlFor="ALERT_THRESHOLD_HOURS">Alert threshold (hours)</label>
+                    <input
+                      id="ALERT_THRESHOLD_HOURS"
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      value={form.hosSettings?.ALERT_THRESHOLD_HOURS ?? ''}
+                      onChange={(e) => setForm((p) => ({ ...p, hosSettings: { ...p.hosSettings, ALERT_THRESHOLD_HOURS: e.target.value } }))}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
