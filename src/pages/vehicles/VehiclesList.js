@@ -122,9 +122,14 @@ const VehiclesList = () => {
                 </div>
               </td>
               <td data-label="Actions">
-                <Link className="pill-button" to={`/vehicles/${vehicle._id}`}>
-                  Manage
-                </Link>
+                <div className="pill-group">
+                  <Link className="pill-button" to={`/vehicles/${vehicle._id}`}>
+                    Manage
+                  </Link>
+                  <Link className="pill-button" to={`/vehicles/${vehicle._id}/view`}>
+                    View
+                  </Link>
+                </div>
               </td>
             </tr>
           ))}

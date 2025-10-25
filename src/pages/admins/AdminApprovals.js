@@ -4,9 +4,12 @@ import { listAdmins, updateApproval } from '../../services/adminService';
 
 const statusFilters = [
   { value: 'all', label: 'All admins' },
-  { value: 'pending', label: 'Pending approval' },
+  // The backend stores unapproved accounts as 'no' by default. Treat 'no'
+  // as the pending state in the UI so new signups surface under the
+  // default filter. This avoids a mismatch between the DB enum and the
+  // filter UI which used 'pending'.
+  { value: 'no', label: 'Pending approval' },
   { value: 'yes', label: 'Approved' },
-  { value: 'no', label: 'Rejected' },
 ];
 
 const AdminApprovals = () => {
@@ -14,7 +17,8 @@ const AdminApprovals = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState('pending');
+  // Default to showing pending/unapproved admins (stored as 'no' in DB)
+  const [filter, setFilter] = useState('no');
   const [updating, setUpdating] = useState('');
 
   useEffect(() => {
@@ -44,7 +48,8 @@ const AdminApprovals = () => {
   const filteredAdmins = useMemo(() => {
     const query = search.trim().toLowerCase();
     return admins.filter((admin) => {
-      const approved = (admin.approved || admin.status || '').toLowerCase();
+      // Normalize server-side value: backend uses 'yes' or 'no'. Map falsy to 'no'
+      const approved = (admin.approved || admin.status || 'no').toLowerCase();
       const matchesFilter = filter === 'all' || approved === filter;
       if (!matchesFilter) return false;
       if (!query) return true;
@@ -109,13 +114,13 @@ const AdminApprovals = () => {
         </thead>
         <tbody>
           {filteredAdmins.map((admin) => {
-            const approval = (admin.approved || admin.status || 'pending').toLowerCase();
+            const approval = (admin.approved || admin.status || 'no').toLowerCase();
             const badgeClass =
               approval === 'yes'
                 ? 'badge-success'
                 : approval === 'no'
-                ? 'badge-warning'
-                : 'badge-info';
+                ? 'badge-info'
+                : 'badge-warning';
             return (
               <tr key={admin._id}>
                 <td data-label="Admin">
@@ -134,7 +139,7 @@ const AdminApprovals = () => {
                 </td>
                 <td data-label="Status">
                   <span className={`badge ${badgeClass}`}>
-                    {approval === 'yes' ? 'Approved' : approval === 'no' ? 'Rejected' : 'Pending'}
+                    {approval === 'yes' ? 'Approved' : approval === 'no' ? 'Pending' : 'Unknown'}
                   </span>
                 </td>
                 <td data-label="Actions">
@@ -142,7 +147,7 @@ const AdminApprovals = () => {
                     <button
                       type="button"
                       className="pill-button"
-                      disabled={updating === admin._id + 'yes'}
+                      disabled={updating === admin._id + 'yes' || approval === 'yes'}
                       onClick={() => handleApprovalChange(admin._id, 'yes')}
                     >
                       Approve
@@ -150,7 +155,7 @@ const AdminApprovals = () => {
                     <button
                       type="button"
                       className="pill-button"
-                      disabled={updating === admin._id + 'no'}
+                      disabled={updating === admin._id + 'no' || approval === 'no'}
                       onClick={() => handleApprovalChange(admin._id, 'no')}
                     >
                       Reject

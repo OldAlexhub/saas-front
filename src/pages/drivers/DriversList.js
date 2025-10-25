@@ -158,9 +158,14 @@ const DriversList = () => {
                 </div>
               </td>
               <td data-label="Actions">
-                <Link className="pill-button" to={`/drivers/${driver._id}`}>
-                  Manage
-                </Link>
+                <div className="pill-group">
+                  <Link className="pill-button" to={`/drivers/${driver._id}`}>
+                    Manage
+                  </Link>
+                  <Link className="pill-button" to={`/drivers/${driver._id}/view`}>
+                    View
+                  </Link>
+                </div>
               </td>
             </tr>
           ))}

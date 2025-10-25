@@ -22,6 +22,15 @@ export const listVehicles = () => {
 };
 
 /**
+ * Batch fetch vehicles by cabNumbers.
+ * @param {string[]} cabNumbers
+ */
+export const getVehiclesByCabNumbers = (cabNumbers) => {
+  const path = `${VEHICLE_LIST_PATH || '/vehicles'}/by-cabs`;
+  return API.post(path, { cabNumbers });
+};
+
+/**
  * Get a single vehicle by id.
  * @param {string} id - Vehicle document id.
  */
@@ -34,6 +43,17 @@ export const getVehicle = (id) => {
         VEHICLE_ID_TEMPLATE,
       ) || `/vehicles/${id}`,
   );
+};
+
+/**
+ * Fetch a vehicle by its cab number (fallback when we don't have the Mongo _id).
+ * Returns the same shape as getVehicle: { vehicle }
+ */
+export const getVehicleByCabNumber = async (cabNumber) => {
+  const res = await API.get(VEHICLE_LIST_PATH || '/vehicles', { params: { cabNumber } });
+  const list = res.data?.vehicles || res.data || [];
+  const found = Array.isArray(list) ? list.find((v) => String(v.cabNumber) === String(cabNumber)) : null;
+  return { vehicle: found };
 };
 
 /**
@@ -68,4 +88,4 @@ export const updateVehicle = (id, formData) => {
   );
 };
 
-export default { listVehicles, getVehicle, addVehicle, updateVehicle };
+export default { listVehicles, getVehiclesByCabNumbers, getVehicle, getVehicleByCabNumber, addVehicle, updateVehicle };
