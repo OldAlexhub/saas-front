@@ -23,14 +23,7 @@ const icons = {
       <path d="M3 22a9 9 0 0 1 18 0" />
     </Icon>
   ),
-  dashboard: (
-    <Icon>
-      <path d="M4 4h7v10H4z" />
-      <path d="M13 10h7V4h-7z" />
-      <path d="M13 20h7v-8h-7z" />
-      <path d="M4 20h7v-5H4z" />
-    </Icon>
-  ),
+  
   drivers: (
     <Icon>
       <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z" />
@@ -74,6 +67,7 @@ const icons = {
       <path d="M7 16h8" />
     </Icon>
   ),
+  // accounting icon removed
   messaging: (
     <Icon>
       <path d="M21 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z" />
@@ -174,6 +168,7 @@ const navSections = [
       { to: '/fares', label: 'Fares', icon: icons.fares },
       { to: '/settings/app', label: 'Driver App Settings', icon: icons.fares, end: true },
       { to: '/settings/company', label: 'Company Settings', icon: icons.fares, end: true },
+      // Invoicing removed
     ],
   },
 ];
@@ -318,8 +313,13 @@ const AppLayout = ({ title, subtitle, actions, children }) => {
     }
   }, [connected, socket, pushNotification]);
 
-  const logout = () => {
-    localStorage.removeItem('token');
+  const logout = async () => {
+    try {
+      await fetch('/api/v1/admins/logout', { method: 'POST', credentials: 'include' });
+    } catch (_) {
+      // best-effort; clear local state regardless
+    }
+    localStorage.removeItem('isLoggedIn');
     window.dispatchEvent(new Event('auth-token'));
     navigate('/login');
   };

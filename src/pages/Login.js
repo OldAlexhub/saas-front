@@ -18,9 +18,8 @@ const Login = () => {
     setError('');
     setLoading(true);
     try {
-      const res = await loginAdmin(form);
-      const { token } = res.data;
-      localStorage.setItem('token', token);
+      await loginAdmin(form);
+      localStorage.setItem('isLoggedIn', 'true');
       window.dispatchEvent(new Event('auth-token'));
       navigate('/');
     } catch (err) {

@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { divIcon } from 'leaflet';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, Marker, Polyline, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 import { Link, useNavigate } from 'react-router-dom';
 import AppLayout from '../../components/AppLayout';
 import { listActives } from '../../services/activeService';
@@ -133,6 +133,9 @@ const BookingsCreate = () => {
   const [nearbyLoading, setNearbyLoading] = useState(false);
   const [nearbyError, setNearbyError] = useState('');
   const [nearbyRadiusMiles, setNearbyRadiusMiles] = useState(DEFAULT_NEARBY_RADIUS_MILES);
+  const [serviceState, setServiceState] = useState('');
+  const [routeCoords, setRouteCoords] = useState(null);
+  const [routeIsApproximate, setRouteIsApproximate] = useState(false);
   const mapboxTiles = useMemo(() => getMapboxTileLayer(), []);
   const nearbyRadiusMeters = useMemo(() => Number(nearbyRadiusMiles) * 1609.34, [nearbyRadiusMiles]);
   const tileLayerUrl = mapboxTiles?.url || 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
@@ -147,6 +150,38 @@ const BookingsCreate = () => {
         iconSize: [16, 16],
         iconAnchor: [8, 8],
         popupAnchor: [0, -10],
+      }),
+    [],
+  );
+
+  const pickupIcon = useMemo(
+    () =>
+      divIcon({
+        className: '',
+        html: `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="40" viewBox="0 0 30 40">
+          <path d="M15 0C6.716 0 0 6.716 0 15c0 9.941 15 25 15 25S30 24.941 30 15C30 6.716 23.284 0 15 0z" fill="#22c55e" stroke="white" stroke-width="2"/>
+          <circle cx="15" cy="15" r="7" fill="white" opacity="0.92"/>
+          <text x="15" y="19.5" text-anchor="middle" fill="#15803d" font-size="11" font-family="Arial,sans-serif" font-weight="bold">P</text>
+        </svg>`,
+        iconSize: [30, 40],
+        iconAnchor: [15, 40],
+        popupAnchor: [0, -42],
+      }),
+    [],
+  );
+
+  const dropoffIcon = useMemo(
+    () =>
+      divIcon({
+        className: '',
+        html: `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="40" viewBox="0 0 30 40">
+          <path d="M15 0C6.716 0 0 6.716 0 15c0 9.941 15 25 15 25S30 24.941 30 15C30 6.716 23.284 0 15 0z" fill="#ef4444" stroke="white" stroke-width="2"/>
+          <circle cx="15" cy="15" r="7" fill="white" opacity="0.92"/>
+          <text x="15" y="19.5" text-anchor="middle" fill="#b91c1c" font-size="11" font-family="Arial,sans-serif" font-weight="bold">D</text>
+        </svg>`,
+        iconSize: [30, 40],
+        iconAnchor: [15, 40],
+        popupAnchor: [0, -42],
       }),
     [],
   );
@@ -177,6 +212,7 @@ const BookingsCreate = () => {
           const stateCode = String(allowed[0]).trim().toUpperCase();
           const stateCenter = getStateCenter(stateCode);
           if (stateCenter) setDefaultCenter(stateCenter);
+          setServiceState(stateCode);
         }
       } catch (err) {
         // ignore - keep defaults
@@ -279,15 +315,24 @@ const BookingsCreate = () => {
     );
   }
 
-  function MapAutoCenter() {
+  function MapFitBounds() {
     const map = useMap();
     useEffect(() => {
-      const active =
-        mapFocus === 'pickup'
-          ? pickupPosition || dropoffPosition || defaultCenter
-          : dropoffPosition || pickupPosition || defaultCenter;
-      if (!active) return;
-      map.setView(active, map.getZoom());
+      if (pickupPosition && dropoffPosition) {
+        map.fitBounds(
+          [
+            [pickupPosition.lat, pickupPosition.lng],
+            [dropoffPosition.lat, dropoffPosition.lng],
+          ],
+          { padding: [48, 48], maxZoom: 15 },
+        );
+      } else {
+        const active =
+          mapFocus === 'pickup'
+            ? pickupPosition || dropoffPosition || defaultCenter
+            : dropoffPosition || pickupPosition || defaultCenter;
+        if (active) map.setView(active, map.getZoom());
+      }
     }, [pickupPosition, dropoffPosition, mapFocus, defaultCenter, map]);
     return null;
   }
@@ -336,26 +381,45 @@ const BookingsCreate = () => {
         return { lat: undefined, lng: undefined };
       }
 
+      // Drop-off uses the (trustworthy) pickup as its anchor; pickup always
+      // uses the service-area centre so a bad drop-off can never corrupt it.
       const biasPoint =
-        label === 'pickup'
-          ? dropoffPosition || pickupPosition || defaultCenter
-          : pickupPosition || dropoffPosition || defaultCenter;
+        label === 'dropoff' && pickupPosition ? pickupPosition : defaultCenter;
 
+      // Append the service state when not already present so partial
+      // addresses like "1450 S. Havana St" resolve to the right city.
+      const stateAlreadyInAddress = serviceState
+        ? new RegExp(`\\b${serviceState}\\b`, 'i').test(address)
+        : false;
+      const geocodeQuery =
+        serviceState && !stateAlreadyInAddress ? `${address}, ${serviceState}` : address;
+
+      // bbox hard-constrains to ±1.5° of the bias centre (≈ 100-mile radius)
+      // so cross-country false matches are impossible.
+      const bboxPad = 1.5;
       const params = {
         access_token: MAPBOX_TOKEN,
         limit: 1,
         autocomplete: false,
         country: 'US',
+        types: 'poi,address,place,locality,neighborhood,district',
+        proximity: `${biasPoint.lng},${biasPoint.lat}`,
+        bbox: [
+          biasPoint.lng - bboxPad,
+          biasPoint.lat - bboxPad,
+          biasPoint.lng + bboxPad,
+          biasPoint.lat + bboxPad,
+        ].join(','),
       };
 
-      if (biasPoint) {
-        params.proximity = `${biasPoint.lng},${biasPoint.lat}`;
-      }
-
       try {
-        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json`;
+        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(geocodeQuery)}.json`;
         const geoRes = await axios.get(url, { params });
+        // Trust Mapbox's ranking (proximity + textual relevance combined).
+        // Do NOT override with "pick closest by distance" — that discards
+        // textual relevance and causes airports to lose to nearer wrong POIs.
         const feature = geoRes.data?.features?.[0];
+
         if (feature && Array.isArray(feature.center) && feature.center.length >= 2) {
           const parsed = normalizePair(parseFloat(feature.center[1]), parseFloat(feature.center[0]));
           if (Number.isFinite(parsed.lat) && Number.isFinite(parsed.lng)) {
@@ -389,15 +453,26 @@ const BookingsCreate = () => {
       formatLatLng,
       normalizePair,
       pickupPosition,
+      serviceState,
     ],
   );
 
+  // Button click: always re-geocode from the address text, ignoring any
+  // coordinates already in the fields so bad results can be corrected.
   const handleLocate = useCallback(
+    async (kind) => {
+      const addressKey = kind === 'pickup' ? 'pickupAddress' : 'dropoffAddress';
+      await resolveCoordinates(kind, null, null, form[addressKey]);
+    },
+    [form, resolveCoordinates],
+  );
+
+  // onBlur: only geocode when coordinates are not already present.
+  const handleAutoLocate = useCallback(
     async (kind) => {
       const latKey = kind === 'pickup' ? 'pickupLat' : 'dropoffLat';
       const lngKey = kind === 'pickup' ? 'pickupLon' : 'dropoffLon';
       const addressKey = kind === 'pickup' ? 'pickupAddress' : 'dropoffAddress';
-
       await resolveCoordinates(kind, form[latKey], form[lngKey], form[addressKey]);
     },
     [form, resolveCoordinates],
@@ -773,6 +848,8 @@ const fareEstimateNote = useMemo(() => {
       setDistanceMiles(null);
       setDistanceSource(null);
       setDistanceError('');
+      setRouteCoords(null);
+      setRouteIsApproximate(false);
       return;
     }
 
@@ -780,12 +857,21 @@ const fareEstimateNote = useMemo(() => {
       ? straightLineDistance * ROAD_DISTANCE_BUFFER
       : null;
 
+    const straightLineCoords = [
+      [pickupPosition.lat, pickupPosition.lng],
+      [dropoffPosition.lat, dropoffPosition.lng],
+    ];
+
     if (Number.isFinite(fallbackDistance)) {
       setDistanceMiles(fallbackDistance);
       setDistanceSource('straight-line');
+      setRouteCoords(straightLineCoords);
+      setRouteIsApproximate(true);
     } else {
       setDistanceMiles(null);
       setDistanceSource(null);
+      setRouteCoords(null);
+      setRouteIsApproximate(false);
     }
 
     if (!MAPBOX_TOKEN) {
@@ -803,7 +889,8 @@ const fareEstimateNote = useMemo(() => {
         const url = new URL(
           `https://api.mapbox.com/directions/v5/mapbox/driving/${pickup};${dropoff}`,
         );
-        url.searchParams.set('overview', 'false');
+        url.searchParams.set('overview', 'full');
+        url.searchParams.set('geometries', 'geojson');
         url.searchParams.set('access_token', MAPBOX_TOKEN);
 
         const response = await fetch(url.toString(), {
@@ -815,7 +902,8 @@ const fareEstimateNote = useMemo(() => {
         }
 
         const data = await response.json();
-        const meters = data?.routes?.[0]?.distance;
+        const route = data?.routes?.[0];
+        const meters = route?.distance;
         const miles = Number(meters) / 1609.344;
 
         if (!Number.isFinite(miles) || miles <= 0) {
@@ -825,6 +913,13 @@ const fareEstimateNote = useMemo(() => {
         setDistanceMiles(miles);
         setDistanceSource('mapbox-driving');
         setDistanceError('');
+
+        const geomCoords = route?.geometry?.coordinates;
+        if (Array.isArray(geomCoords) && geomCoords.length >= 2) {
+          // Mapbox returns [lng, lat]; Leaflet expects [lat, lng]
+          setRouteCoords(geomCoords.map(([lng, lat]) => [lat, lng]));
+          setRouteIsApproximate(false);
+        }
       } catch (err) {
         if (err.name === 'AbortError') {
           return;
@@ -834,9 +929,13 @@ const fareEstimateNote = useMemo(() => {
         if (Number.isFinite(fallbackDistance)) {
           setDistanceMiles(fallbackDistance);
           setDistanceSource('straight-line');
+          setRouteCoords(straightLineCoords);
+          setRouteIsApproximate(true);
         } else {
           setDistanceMiles(null);
           setDistanceSource(null);
+          setRouteCoords(null);
+          setRouteIsApproximate(false);
         }
         setDistanceError('Using adjusted straight-line distance while routing is unavailable.');
       }
@@ -1082,7 +1181,7 @@ const fareEstimateNote = useMemo(() => {
                     name="pickupAddress"
                     value={form.pickupAddress}
                     onChange={handleChange}
-                    onBlur={() => handleLocate('pickup')}
+                    onBlur={() => handleAutoLocate('pickup')}
                     required
                   />
                   <button
@@ -1138,7 +1237,7 @@ const fareEstimateNote = useMemo(() => {
                     name="dropoffAddress"
                     value={form.dropoffAddress}
                     onChange={handleChange}
-                    onBlur={() => handleLocate('dropoff')}
+                    onBlur={() => handleAutoLocate('dropoff')}
                     required
                   />
                   <button
@@ -1342,7 +1441,17 @@ const fareEstimateNote = useMemo(() => {
                 style={{ height: '320px', width: '100%' }}
               >
                 <TileLayer attribution={tileLayerAttribution} url={tileLayerUrl} maxZoom={20} />
-                <MapAutoCenter />
+                <MapFitBounds />
+                {routeCoords && (
+                  <Polyline
+                    positions={routeCoords}
+                    pathOptions={
+                      routeIsApproximate
+                        ? { color: '#6b7280', weight: 3, opacity: 0.7, dashArray: '8 6' }
+                        : { color: '#2563eb', weight: 5, opacity: 0.85 }
+                    }
+                  />
+                )}
                 {nearbyDrivers.map((driver) => (
                   <Marker
                     key={`nearby-driver-${driver.id}`}

@@ -25,25 +25,25 @@ function getSocketPath() {
 
 export function RealtimeProvider({ children }) {
   const [connected, setConnected] = useState(false);
-  const [token, setToken] = useState(() => localStorage.getItem('token'));
+  const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem('isLoggedIn'));
   const socketRef = useRef(null);
 
   useEffect(() => {
-    const handleTokenChange = () => {
-      setToken(localStorage.getItem('token'));
+    const handleAuthChange = () => {
+      setIsLoggedIn(!!localStorage.getItem('isLoggedIn'));
     };
 
-    window.addEventListener('storage', handleTokenChange);
-    window.addEventListener('auth-token', handleTokenChange);
+    window.addEventListener('storage', handleAuthChange);
+    window.addEventListener('auth-token', handleAuthChange);
 
     return () => {
-      window.removeEventListener('storage', handleTokenChange);
-      window.removeEventListener('auth-token', handleTokenChange);
+      window.removeEventListener('storage', handleAuthChange);
+      window.removeEventListener('auth-token', handleAuthChange);
     };
   }, []);
 
   useEffect(() => {
-    if (!token) {
+    if (!isLoggedIn) {
       setConnected(false);
       if (socketRef.current) {
         socketRef.current.disconnect();
@@ -60,10 +60,8 @@ export function RealtimeProvider({ children }) {
 
     const client = io(baseUrl, {
       path: getSocketPath(),
-      auth: {
-        token,
-        role: 'admin',
-      },
+      auth: { role: 'admin' },
+      withCredentials: true,
       transports: ['websocket'],
     });
 
@@ -86,7 +84,7 @@ export function RealtimeProvider({ children }) {
       client.disconnect();
       socketRef.current = null;
     };
-  }, [token]);
+  }, [isLoggedIn]);
 
   const value = useMemo(
     () => ({

@@ -1,58 +1,50 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import AppLayout from '../../components/AppLayout';
 import { listBookings } from '../../services/bookingService';
 
 const statusOptions = ['All', 'Scheduled', 'Assigned', 'Completed', 'Cancelled'];
 
+const todayIso = new Date().toISOString().slice(0, 10);
+
 const BookingsList = () => {
-  const [bookings, setBookings] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('All');
-  // Default date range: today (local)
-  const todayIso = (() => {
-    const d = new Date();
-    return d.toISOString().slice(0, 10);
-  })();
   const [fromDate, setFromDate] = useState(todayIso);
   const [toDate, setToDate] = useState(todayIso);
+  // appliedDates drives the query — only updated when Apply is clicked
+  const [appliedDates, setAppliedDates] = useState({
+    from: new Date(`${todayIso}T00:00:00`).toISOString(),
+    to: new Date(`${todayIso}T23:59:59.999`).toISOString(),
+  });
 
-  const fetchBookings = async (opts = {}) => {
-    setLoading(true);
-    setError('');
-    try {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['bookings', appliedDates],
+    queryFn: async () => {
       const params = {};
-      if (status && status !== 'All') params.status = status;
-      if (opts.from !== undefined) params.from = opts.from;
-      if (opts.to !== undefined) params.to = opts.to;
-      // if no opts passed, use fromDate/toDate state (default to today)
-      if (!('from' in opts) && fromDate) {
-        const fromIso = new Date(`${fromDate}T00:00:00`).toISOString();
-        params.from = fromIso;
-      }
-      if (!('to' in opts) && toDate) {
-        const toIso = new Date(`${toDate}T23:59:59.999`).toISOString();
-        params.to = toIso;
-      }
-
+      if (appliedDates.from) params.from = appliedDates.from;
+      if (appliedDates.to) params.to = appliedDates.to;
       const res = await listBookings(params);
       const items = res.data?.bookings || res.data?.results || res.data || [];
-      setBookings(Array.isArray(items) ? items : []);
-    } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to fetch bookings';
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
+      return Array.isArray(items) ? items : [];
+    },
+  });
+
+  const bookings = data ?? [];
+
+  const applyDates = () => {
+    setAppliedDates({
+      from: fromDate ? new Date(`${fromDate}T00:00:00`).toISOString() : undefined,
+      to: toDate ? new Date(`${toDate}T23:59:59.999`).toISOString() : undefined,
+    });
   };
 
-  useEffect(() => {
-    // initial load with today's range
-    fetchBookings();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const clearDates = () => {
+    setFromDate('');
+    setToDate('');
+    setAppliedDates({ from: undefined, to: undefined });
+  };
 
   const filteredBookings = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -82,11 +74,12 @@ const BookingsList = () => {
   );
 
   const renderBody = () => {
-    if (loading) {
+    if (isLoading) {
       return <div className="skeleton" style={{ height: '260px' }} />;
     }
     if (error) {
-      return <div className="feedback error">{error}</div>;
+      const msg = error.response?.data?.message || 'Failed to fetch bookings';
+      return <div className="feedback error">{msg}</div>;
     }
     if (!filteredBookings.length) {
       return <div className="empty-state">No bookings match your filters yet.</div>;
@@ -182,15 +175,11 @@ const BookingsList = () => {
                 <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
               </div>
             </div>
-            <button className="btn btn-subtle" type="button" onClick={() => fetchBookings()}>Apply</button>
+            <button className="btn btn-subtle" type="button" onClick={applyDates}>Apply</button>
             <button
               className="btn btn-ghost"
               type="button"
-              onClick={() => {
-                setFromDate('');
-                setToDate('');
-                fetchBookings({ from: undefined, to: undefined });
-              }}
+              onClick={clearDates}
             >
               Clear
             </button>

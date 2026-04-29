@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import AppLayout from '../../components/AppLayout';
 import { listDrivers } from '../../services/driverService';
@@ -55,28 +56,18 @@ const complianceBadge = ({ dlExpiry, cbiExpiry, dotExpiry }) => {
 };
 
 const DriversList = () => {
-  const [drivers, setDrivers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [search, setSearch] = useState('');
 
-  useEffect(() => {
-    const fetchDrivers = async () => {
-      setLoading(true);
-      setError('');
-      try {
-        const res = await listDrivers();
-        const items = res.data?.drivers || res.data?.results || res.data || [];
-        setDrivers(Array.isArray(items) ? items : []);
-      } catch (err) {
-        const msg = err.response?.data?.message || 'Failed to fetch drivers';
-        setError(msg);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchDrivers();
-  }, []);
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['drivers'],
+    queryFn: async () => {
+      const res = await listDrivers();
+      const items = res.data?.drivers || res.data?.results || res.data || [];
+      return Array.isArray(items) ? items : [];
+    },
+  });
+
+  const drivers = data ?? [];
 
   const filteredDrivers = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -104,11 +95,12 @@ const DriversList = () => {
   );
 
   const renderBody = () => {
-    if (loading) {
+    if (isLoading) {
       return <div className="skeleton" style={{ height: '260px' }} />;
     }
     if (error) {
-      return <div className="feedback error">{error}</div>;
+      const msg = error.response?.data?.message || 'Failed to fetch drivers';
+      return <div className="feedback error">{msg}</div>;
     }
     if (!filteredDrivers.length) {
       return (

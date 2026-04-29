@@ -6,7 +6,7 @@ import axios from 'axios';
 // hostname portion with the page's hostname so requests target the
 // machine serving the frontend instead of the device's localhost.
 function deriveBaseUrl() {
-  let base = process.env.REACT_APP_API_BASE_URL || '/api';
+  let base = process.env.REACT_APP_API_BASE_URL || '/api/v1';
 
   if (typeof window === 'undefined') return base;
 
@@ -36,18 +36,21 @@ function deriveBaseUrl() {
 
 const API = axios.create({
   baseURL: deriveBaseUrl(),
+  withCredentials: true,
 });
 
-// Attach the JWT token to every request if it exists in localStorage
-API.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+// Redirect to login on 401 (session expired or cookie cleared)
+API.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 && typeof window !== 'undefined') {
+      localStorage.removeItem('isLoggedIn');
+      if (!window.location.pathname.startsWith('/login')) {
+        window.location.href = '/login';
+      }
     }
-    return config;
-  },
-  (error) => Promise.reject(error)
+    return Promise.reject(error);
+  }
 );
 
 export default API;

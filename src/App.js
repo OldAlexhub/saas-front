@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 // Pages
+// Accounting pages removed
 import ActiveManage from './pages/actives/ActiveManage';
 import ActivesList from './pages/actives/ActivesList';
 import ActivesView from './pages/actives/ActivesView';
@@ -29,10 +30,10 @@ import VehiclesList from './pages/vehicles/VehiclesList';
 import VehiclesView from './pages/vehicles/VehiclesView';
 
 function App() {
-  const [token, setToken] = useState(() => localStorage.getItem('token'));
+  const [token, setToken] = useState(() => localStorage.getItem('isLoggedIn'));
 
   useEffect(() => {
-    const handleTokenChange = () => setToken(localStorage.getItem('token'));
+    const handleTokenChange = () => setToken(localStorage.getItem('isLoggedIn'));
     window.addEventListener('storage', handleTokenChange);
     window.addEventListener('auth-token', handleTokenChange);
     return () => {
@@ -116,9 +117,11 @@ function App() {
       <Route
         path="/settings/company"
         element={token ? <CompanySettings /> : <Navigate to="/login" replace />} />
+      {/* Invoicing settings page removed */}
       <Route
         path="/settings/messaging"
         element={token ? <DriverMessaging /> : <Navigate to="/login" replace />} />
+      {/* Accounting routes removed */}
     </Routes>
   );
 }

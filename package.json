@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@tanstack/react-query": "^5.100.6",
     "axios": "^1.5.0",
     "bootstrap": "^5.3.2",
     "eslint-plugin-react-hooks": "^4.6.0",
