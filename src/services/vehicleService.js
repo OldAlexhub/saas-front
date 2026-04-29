@@ -17,8 +17,8 @@ const VEHICLE_ID_TEMPLATE = resolvePath(
 /**
  * Fetch all vehicles.
  */
-export const listVehicles = () => {
-  return API.get(VEHICLE_LIST_PATH || '/vehicles');
+export const listVehicles = (params = {}) => {
+  return API.get(VEHICLE_LIST_PATH || '/vehicles', { params });
 };
 
 /**

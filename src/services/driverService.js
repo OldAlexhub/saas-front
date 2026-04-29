@@ -33,8 +33,8 @@ const withDriverBase = (path) => {
 /**
  * Fetch a list of all drivers.
  */
-export const listDrivers = () => {
-  return API.get(withDriverBase(DRIVER_LIST_PATH || '/drivers'));
+export const listDrivers = (params = {}) => {
+  return API.get(withDriverBase(DRIVER_LIST_PATH || '/drivers'), { params });
 };
 
 /**
