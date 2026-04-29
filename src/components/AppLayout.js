@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useRealtime } from '../providers/RealtimeProvider';
+import API from '../services/api';
 
 const Icon = ({ children }) => (
   <svg
@@ -315,7 +316,7 @@ const AppLayout = ({ title, subtitle, actions, children }) => {
 
   const logout = async () => {
     try {
-      await fetch('/api/v1/admins/logout', { method: 'POST', credentials: 'include' });
+      await API.post('/admins/logout');
     } catch (_) {
       // best-effort; clear local state regardless
     }
