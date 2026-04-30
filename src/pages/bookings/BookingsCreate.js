@@ -1513,7 +1513,7 @@ const fareEstimateNote = useMemo(() => {
               <div className="nearby-drivers">
                 <div className="nearby-drivers-header">
                   <h4>Online drivers nearby</h4>
-                  {pickupPosition && !nearbyLoading && (
+                  {pickupPosition && !nearbyLoading && !nearbyError && (
                     <span className="nearby-drivers-count">
                       {nearbyDrivers.length > 0
                         ? `${nearbyDrivers.length} within ${nearbyRadiusMiles} mi`

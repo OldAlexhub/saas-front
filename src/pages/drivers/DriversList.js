@@ -7,9 +7,11 @@ import { listDrivers } from '../../services/driverService';
 const formatDate = (value) => {
   if (!value) return '—';
   try {
-    const formatted = new Date(value);
-    if (Number.isNaN(formatted.getTime())) return '—';
-    return formatted.toLocaleDateString();
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '—';
+    // Display in UTC so date-only values stored as UTC midnight (e.g. license
+    // expiry, DOB) don't shift to the previous calendar day in UTC-negative zones.
+    return d.toLocaleDateString(undefined, { timeZone: 'UTC' });
   } catch (e) {
     return '—';
   }

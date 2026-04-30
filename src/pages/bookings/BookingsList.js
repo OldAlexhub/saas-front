@@ -6,7 +6,10 @@ import { listBookings } from '../../services/bookingService';
 
 const statusOptions = ['All', 'Scheduled', 'Assigned', 'Completed', 'Cancelled'];
 
-const todayIso = new Date().toISOString().slice(0, 10);
+// Build today's date string in LOCAL time (not UTC). Using toISOString() would
+// give the UTC date, which in UTC-negative zones can be tomorrow after ~5-7pm.
+const _now = new Date();
+const todayIso = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, '0')}-${String(_now.getDate()).padStart(2, '0')}`;
 
 const BookingsList = () => {
   const [search, setSearch] = useState('');

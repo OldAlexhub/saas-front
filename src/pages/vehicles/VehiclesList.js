@@ -6,7 +6,7 @@ import { listVehicles } from '../../services/vehicleService';
 const formatDate = (value) => {
   if (!value) return '—';
   const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? '—' : parsed.toLocaleDateString();
+  return Number.isNaN(parsed.getTime()) ? '—' : parsed.toLocaleDateString(undefined, { timeZone: 'UTC' });
 };
 
 const expiryBadge = (value) => {
