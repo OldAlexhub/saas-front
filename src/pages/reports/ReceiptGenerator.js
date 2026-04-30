@@ -14,6 +14,42 @@ const defaultFilters = {
   to: '',
 };
 
+const ZERO_COORDINATE_EPSILON = 0.0001;
+
+const normalizeLatLon = (lat, lon) => {
+  const la = Number(lat);
+  const lo = Number(lon);
+  if (!Number.isFinite(la) || !Number.isFinite(lo)) return null;
+  if (la < -90 || la > 90 || lo < -180 || lo > 180) return null;
+  if (Math.abs(la) < ZERO_COORDINATE_EPSILON && Math.abs(lo) < ZERO_COORDINATE_EPSILON) return null;
+  return { lat: la, lon: lo };
+};
+
+const pointToLatLon = (point) => {
+  if (!point || !Array.isArray(point.coordinates) || point.coordinates.length < 2) return null;
+  return normalizeLatLon(point.coordinates[1], point.coordinates[0]);
+};
+
+const trailPointToLatLon = (entry) => pointToLatLon(entry?.point);
+
+const firstTrailLatLon = (trail) => {
+  if (!Array.isArray(trail)) return null;
+  for (const entry of trail) {
+    const coords = trailPointToLatLon(entry);
+    if (coords) return coords;
+  }
+  return null;
+};
+
+const lastTrailLatLon = (trail) => {
+  if (!Array.isArray(trail)) return null;
+  for (let index = trail.length - 1; index >= 0; index -= 1) {
+    const coords = trailPointToLatLon(trail[index]);
+    if (coords) return coords;
+  }
+  return null;
+};
+
 const ReceiptGenerator = () => {
   const [company, setCompany] = useState({
     name: 'TaxiOps Transportation LLC',
@@ -78,31 +114,38 @@ const ReceiptGenerator = () => {
 
           const fetchedTrips = unwrap(bookingsRes, ['bookings', 'results'])
             .filter((booking) => booking.status === 'Completed')
-            .map((booking) => ({
-              id: booking.bookingId || booking._id,
-              customer: booking.customerName || '-',
-              pickup: booking.pickupTime || null,
-              dropoff: booking.droppedOffAt || booking.completedAt || null,
-              origin: booking.pickupAddress || '-',
-              destination: booking.dropoffAddress || '-',
-              // keep coordinates so UI can show lat/lon when address is missing
-              pickupLat: booking.pickupLat ?? booking.pickupLat ?? null,
-              pickupLon: booking.pickupLon ?? booking.pickupLon ?? null,
-              dropoffLat: booking.dropoffLat ?? booking.dropoffLat ?? null,
-              dropoffLon: booking.dropoffLon ?? booking.dropoffLon ?? null,
-              driver: booking.driverName || booking.driver?.name || booking.driverId || 'Unassigned',
-              driverId: booking.driverId || booking.driver?._id || '',
-              cabNumber: booking.cabNumber || booking.assignedCab || '',
-              fare: Number(booking.finalFare ?? booking.estimatedFare ?? 0),
-              // fields used to reconstruct the driver's fare breakdown
-              meterMiles: Number(booking.meterMiles ?? booking.estimatedDistanceMiles ?? 0),
-              waitMinutes: Number(booking.waitMinutes ?? 0),
-              passengers: Number(booking.passengers ?? 1),
-              appliedFees: Array.isArray(booking.appliedFees) ? booking.appliedFees : [],
-              fareStrategy: booking.fareStrategy || 'meter',
-              flatRateAmount: Number(booking.flatRateAmount ?? booking.flatRateAmount ?? 0),
-              fareConfig,
-            }))
+            .map((booking) => {
+              const pickupFallback = firstTrailLatLon(booking.driverLocationTrail) || pointToLatLon(booking.driverLocation);
+              const dropoffFallback = lastTrailLatLon(booking.driverLocationTrail) || pointToLatLon(booking.driverLocation);
+              const pickupCoords = normalizeLatLon(booking.pickupLat, booking.pickupLon) || pickupFallback;
+              const dropoffCoords = normalizeLatLon(booking.dropoffLat, booking.dropoffLon) || dropoffFallback;
+
+              return {
+                id: booking.bookingId || booking._id,
+                customer: booking.customerName || '-',
+                pickup: booking.pickupTime || null,
+                dropoff: booking.droppedOffAt || booking.completedAt || null,
+                origin: booking.pickupAddress || '-',
+                destination: booking.dropoffAddress || '-',
+                // keep coordinates so UI can show lat/lon when address is missing
+                pickupLat: pickupCoords?.lat ?? null,
+                pickupLon: pickupCoords?.lon ?? null,
+                dropoffLat: dropoffCoords?.lat ?? null,
+                dropoffLon: dropoffCoords?.lon ?? null,
+                driver: booking.driverName || booking.driver?.name || booking.driverId || 'Unassigned',
+                driverId: booking.driverId || booking.driver?._id || '',
+                cabNumber: booking.cabNumber || booking.assignedCab || '',
+                fare: Number(booking.finalFare ?? booking.estimatedFare ?? 0),
+                // fields used to reconstruct the driver's fare breakdown
+                meterMiles: Number(booking.meterMiles ?? booking.estimatedDistanceMiles ?? 0),
+                waitMinutes: Number(booking.waitMinutes ?? 0),
+                passengers: Number(booking.passengers ?? 1),
+                appliedFees: Array.isArray(booking.appliedFees) ? booking.appliedFees : [],
+                fareStrategy: booking.fareStrategy || 'meter',
+                flatRateAmount: Number(booking.flatRateAmount ?? booking.flatRateAmount ?? 0),
+                fareConfig,
+              };
+            })
             // sort by pickup time (newest first)
             .sort((a, b) => {
               const aMs = a.pickup ? Date.parse(a.pickup) : 0;
@@ -205,9 +248,8 @@ const ReceiptGenerator = () => {
     // If we have a sensible address, show it
     if (addr && addr.length > 3 && !addr.toLowerCase().includes('flagdown')) return addr;
     // Otherwise, if coordinates exist, show lat,lon with reasonable precision
-    const la = typeof lat === 'number' ? lat : Number(lat);
-    const lo = typeof lon === 'number' ? lon : Number(lon);
-    if (Number.isFinite(la) && Number.isFinite(lo)) return `${la.toFixed(6)}, ${lo.toFixed(6)}`;
+    const coords = normalizeLatLon(lat, lon);
+    if (coords) return `${coords.lat.toFixed(6)}, ${coords.lon.toFixed(6)}`;
     // fallback to address or dash
     return addr || '-';
   };
@@ -215,34 +257,29 @@ const ReceiptGenerator = () => {
 
 
   const openTripMapModal = (pickupLat, pickupLon, dropoffLat, dropoffLon, label) => {
-    const pla = Number(pickupLat);
-    const plo = Number(pickupLon);
-    const dla = Number(dropoffLat);
-    const dlo = Number(dropoffLon);
-
-    const hasPickup = Number.isFinite(pla) && Number.isFinite(plo);
-    const hasDropoff = Number.isFinite(dla) && Number.isFinite(dlo);
+    const pickupCoords = normalizeLatLon(pickupLat, pickupLon);
+    const dropoffCoords = normalizeLatLon(dropoffLat, dropoffLon);
 
     const coords = {
-      pickupLat: hasPickup ? pla : null,
-      pickupLon: hasPickup ? plo : null,
-      dropoffLat: hasDropoff ? dla : null,
-      dropoffLon: hasDropoff ? dlo : null,
+      pickupLat: pickupCoords?.lat ?? null,
+      pickupLon: pickupCoords?.lon ?? null,
+      dropoffLat: dropoffCoords?.lat ?? null,
+      dropoffLon: dropoffCoords?.lon ?? null,
       lat: null,
       lon: null,
       label: label || '',
     };
 
     // If only one point exists, populate lat/lon for single-point preview
-    if (hasPickup && !hasDropoff) {
-      coords.lat = pla;
-      coords.lon = plo;
-      coords.label = coords.label || `Pickup: ${pla.toFixed(6)}, ${plo.toFixed(6)}`;
-    } else if (!hasPickup && hasDropoff) {
-      coords.lat = dla;
-      coords.lon = dlo;
-      coords.label = coords.label || `Dropoff: ${dla.toFixed(6)}, ${dlo.toFixed(6)}`;
-    } else if (hasPickup && hasDropoff) {
+    if (pickupCoords && !dropoffCoords) {
+      coords.lat = pickupCoords.lat;
+      coords.lon = pickupCoords.lon;
+      coords.label = coords.label || `Pickup: ${pickupCoords.lat.toFixed(6)}, ${pickupCoords.lon.toFixed(6)}`;
+    } else if (!pickupCoords && dropoffCoords) {
+      coords.lat = dropoffCoords.lat;
+      coords.lon = dropoffCoords.lon;
+      coords.label = coords.label || `Dropoff: ${dropoffCoords.lat.toFixed(6)}, ${dropoffCoords.lon.toFixed(6)}`;
+    } else if (pickupCoords && dropoffCoords) {
       coords.label = coords.label || `Trip: ${label || ''}`;
     }
 
@@ -899,7 +936,7 @@ const ReceiptGenerator = () => {
                           type="button"
                           className="btn btn-subtle"
                           onClick={() => openTripMapModal(trip.pickupLat, trip.pickupLon, trip.dropoffLat, trip.dropoffLon, `${trip.id}`)}
-                          disabled={!(Number.isFinite(Number(trip.pickupLat)) && Number.isFinite(Number(trip.pickupLon))) && !(Number.isFinite(Number(trip.dropoffLat)) && Number.isFinite(Number(trip.dropoffLon)))}
+                          disabled={!normalizeLatLon(trip.pickupLat, trip.pickupLon) && !normalizeLatLon(trip.dropoffLat, trip.dropoffLon)}
                         >
                           Map
                         </button>
@@ -1013,10 +1050,10 @@ const ReceiptGenerator = () => {
               </div>
               {
                 // Prefer a free interactive OpenStreetMap (Leaflet) preview when coordinates exist.
-                (Number.isFinite(Number(mapModalCoords.pickupLat)) || Number.isFinite(Number(mapModalCoords.dropoffLat))) ? (
+                (normalizeLatLon(mapModalCoords.pickupLat, mapModalCoords.pickupLon) || normalizeLatLon(mapModalCoords.dropoffLat, mapModalCoords.dropoffLon)) ? (
                   (() => {
-                    const pickupExists = Number.isFinite(Number(mapModalCoords.pickupLat)) && Number.isFinite(Number(mapModalCoords.pickupLon));
-                    const dropoffExists = Number.isFinite(Number(mapModalCoords.dropoffLat)) && Number.isFinite(Number(mapModalCoords.dropoffLon));
+                    const pickupCoords = normalizeLatLon(mapModalCoords.pickupLat, mapModalCoords.pickupLon);
+                    const dropoffCoords = normalizeLatLon(mapModalCoords.dropoffLat, mapModalCoords.dropoffLon);
 
                     // Fit bounds helper
                     function FitBounds({ points }) {
@@ -1038,8 +1075,8 @@ const ReceiptGenerator = () => {
                     }
 
                     const points = [];
-                    if (pickupExists) points.push({ lat: Number(mapModalCoords.pickupLat), lon: Number(mapModalCoords.pickupLon), label: 'Pickup' });
-                    if (dropoffExists) points.push({ lat: Number(mapModalCoords.dropoffLat), lon: Number(mapModalCoords.dropoffLon), label: 'Dropoff' });
+                    if (pickupCoords) points.push({ lat: pickupCoords.lat, lon: pickupCoords.lon, label: 'Pickup' });
+                    if (dropoffCoords) points.push({ lat: dropoffCoords.lat, lon: dropoffCoords.lon, label: 'Dropoff' });
 
                     const center = points.length ? { lat: points[0].lat, lon: points[0].lon } : { lat: 28.2919557, lon: -81.4075713 };
 

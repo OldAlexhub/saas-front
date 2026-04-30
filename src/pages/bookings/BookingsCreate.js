@@ -264,7 +264,11 @@ const BookingsCreate = () => {
     const latNum = toNumber(lat);
     const lngNum = toNumber(lng);
 
-    if (Number.isFinite(latNum) && Number.isFinite(lngNum)) {
+    if (
+      Number.isFinite(latNum) &&
+      Number.isFinite(lngNum) &&
+      !(Math.abs(latNum) < 0.0001 && Math.abs(lngNum) < 0.0001)
+    ) {
       return { lat: latNum, lng: lngNum };
     }
 
@@ -583,6 +587,7 @@ const BookingsCreate = () => {
   const buildGeoPoint = useCallback(
     (lat, lng) => {
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+      if (Math.abs(lat) < 0.0001 && Math.abs(lng) < 0.0001) return null;
 
       const normalizedLat = normalizeCoordinate(lat);
       const normalizedLng = normalizeCoordinate(lng);
