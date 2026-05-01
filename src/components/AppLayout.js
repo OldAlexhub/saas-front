@@ -90,6 +90,14 @@ const icons = {
       <path d="m7 9-3 3 3 3" />
     </Icon>
   ),
+  enrollme: (
+    <Icon>
+      <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
+      <rect x="9" y="3" width="6" height="4" rx="1" />
+      <path d="M9 12h6" />
+      <path d="M9 16h4" />
+    </Icon>
+  ),
   menu: (
     <Icon>
       <path d="M4 6h16" />
@@ -116,6 +124,7 @@ const navSections = [
     items: [
       { to: '/admins', label: 'Admin approvals', icon: icons.admins },
       { to: '/actives', label: 'Active Roster', icon: icons.actives },
+      { to: '/enrollme-admins', label: 'EnrollMe Admins', icon: icons.enrollme },
     ],
   },
   {

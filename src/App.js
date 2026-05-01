@@ -7,6 +7,7 @@ import ActiveManage from './pages/actives/ActiveManage';
 import ActivesList from './pages/actives/ActivesList';
 import ActivesView from './pages/actives/ActivesView';
 import AdminApprovals from './pages/admins/AdminApprovals';
+import EnrollmeAdmins from './pages/admins/EnrollmeAdmins';
 import BookingDetail from './pages/bookings/BookingDetail';
 import BookingsCreate from './pages/bookings/BookingsCreate';
 import BookingsList from './pages/bookings/BookingsList';
@@ -53,6 +54,9 @@ function App() {
       <Route
         path="/admins"
         element={token ? <AdminApprovals /> : <Navigate to="/login" replace />} />
+      <Route
+        path="/enrollme-admins"
+        element={token ? <EnrollmeAdmins /> : <Navigate to="/login" replace />} />
       <Route
         path="/drivers"
         element={token ? <DriversList /> : <Navigate to="/login" replace />} />
