@@ -114,12 +114,16 @@ const DriverAppDownload = () => {
         <div className="form-section" style={{ marginTop: 16 }}>
           <div>
             <h3>Updating the app</h3>
-            <p className="muted" style={{ fontSize: '0.85rem' }}>
-              To publish a new version: bump the version in <code>driverapp/package.json</code>,
-              then run <code>cd driverapp/android &amp;&amp; gradlew assembleRelease</code>.
-              The server will automatically serve the new APK with the updated version name — no
-              manual file moves required.
+            <p className="muted" style={{ fontSize: '0.85rem', marginBottom: 8 }}>
+              To publish a new version, follow these steps:
             </p>
+            <ol style={{ fontSize: '0.85rem', paddingLeft: '1.4rem', lineHeight: 1.8 }}>
+              <li>Bump the version in <code>driverapp/package.json</code> (e.g. <code>"version": "1.1.0"</code>)</li>
+              <li>Open a terminal in the project root and run:
+                <pre style={{ background: 'var(--surface-alt, #f4f4f4)', padding: '10px 14px', borderRadius: 6, marginTop: 6, overflowX: 'auto', fontSize: '0.8rem', lineHeight: 1.6 }}>{`set JAVA_HOME=C:\\Program Files\\Android\\Android Studio\\jbr\nset ANDROID_HOME=C:\\Users\\moham\\AppData\\Local\\Android\\Sdk\ncd driverapp\\android\ngradlew.bat assembleRelease`}</pre>
+              </li>
+              <li>The server automatically picks up the new APK and serves it with the updated version name — no file moves required.</li>
+            </ol>
           </div>
         </div>
       </>
