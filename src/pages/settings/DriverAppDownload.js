@@ -113,16 +113,41 @@ const DriverAppDownload = () => {
 
         <div className="form-section" style={{ marginTop: 16 }}>
           <div>
-            <h3>Updating the app</h3>
-            <p className="muted" style={{ fontSize: '0.85rem', marginBottom: 8 }}>
-              To publish a new version, follow these steps:
+            <h3>Releasing a new version</h3>
+            <p style={{ fontSize: '0.85rem', marginBottom: 12 }}>
+              Follow these steps each time you build and ship a new app version:
             </p>
-            <ol style={{ fontSize: '0.85rem', paddingLeft: '1.4rem', lineHeight: 1.8 }}>
-              <li>Bump the version in <code>driverapp/package.json</code> (e.g. <code>"version": "1.1.0"</code>)</li>
-              <li>Open a terminal in the project root and run:
-                <pre style={{ background: 'var(--surface-alt, #f4f4f4)', padding: '10px 14px', borderRadius: 6, marginTop: 6, overflowX: 'auto', fontSize: '0.8rem', lineHeight: 1.6 }}>{`set JAVA_HOME=C:\\Program Files\\Android\\Android Studio\\jbr\nset ANDROID_HOME=C:\\Users\\moham\\AppData\\Local\\Android\\Sdk\ncd driverapp\\android\ngradlew.bat assembleRelease`}</pre>
+            <ol style={{ fontSize: '0.85rem', paddingLeft: '1.4rem', lineHeight: 2 }}>
+              <li>Update the version number in <code>server/public/apk/version.json</code> (e.g. <code>{`"version": "1.1.0"`}</code>)</li>
+              <li>Build the release APK — open a terminal in the project root and run:
+                <pre style={{
+                  background: '#1e1e1e',
+                  color: '#d4d4d4',
+                  padding: '12px 16px',
+                  borderRadius: 6,
+                  marginTop: 8,
+                  marginBottom: 4,
+                  overflowX: 'auto',
+                  fontSize: '0.8rem',
+                  lineHeight: 1.8,
+                  fontFamily: 'monospace',
+                }}>{`set JAVA_HOME=C:\\Program Files\\Android\\Android Studio\\jbr\nset ANDROID_HOME=C:\\Users\\moham\\AppData\\Local\\Android\\Sdk\ncd driverapp\\android\ngradlew.bat assembleRelease`}</pre>
               </li>
-              <li>The server automatically picks up the new APK and serves it with the updated version name — no file moves required.</li>
+              <li>Copy the output APK into the server folder:
+                <pre style={{
+                  background: '#1e1e1e',
+                  color: '#d4d4d4',
+                  padding: '12px 16px',
+                  borderRadius: 6,
+                  marginTop: 8,
+                  marginBottom: 4,
+                  overflowX: 'auto',
+                  fontSize: '0.8rem',
+                  lineHeight: 1.8,
+                  fontFamily: 'monospace',
+                }}>{`copy driverapp\\android\\app\\build\\outputs\\apk\\release\\app-release.apk server\\public\\apk\\app-release.apk`}</pre>
+              </li>
+              <li>Deploy the server — the new APK and version name are live instantly.</li>
             </ol>
           </div>
         </div>
