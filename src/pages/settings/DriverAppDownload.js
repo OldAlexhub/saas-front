@@ -75,14 +75,13 @@ const DriverAppDownload = () => {
             <h3>Admin download</h3>
             <div className="metric-subline">Download the APK directly to your device</div>
             <div style={{ marginTop: 24 }}>
-              <a
-                href={downloadUrl}
-                download
+              <button
+                type="button"
                 className="btn btn-primary"
-                style={{ display: 'inline-block' }}
+                onClick={() => { window.location.href = downloadUrl; }}
               >
                 Download APK
-              </a>
+              </button>
             </div>
             {info?.version && (
               <p className="muted" style={{ marginTop: 12, fontSize: '0.8rem' }}>
@@ -115,40 +114,19 @@ const DriverAppDownload = () => {
           <div>
             <h3>Releasing a new version</h3>
             <p style={{ fontSize: '0.85rem', marginBottom: 12 }}>
-              Follow these steps each time you build and ship a new app version:
+              Everything is automated. From the project root, run:
             </p>
-            <ol style={{ fontSize: '0.85rem', paddingLeft: '1.4rem', lineHeight: 2 }}>
-              <li>Update the version number in <code>server/public/apk/version.json</code> (e.g. <code>{`"version": "1.1.0"`}</code>)</li>
-              <li>Build the release APK — open a terminal in the project root and run:
-                <pre style={{
-                  background: '#1e1e1e',
-                  color: '#d4d4d4',
-                  padding: '12px 16px',
-                  borderRadius: 6,
-                  marginTop: 8,
-                  marginBottom: 4,
-                  overflowX: 'auto',
-                  fontSize: '0.8rem',
-                  lineHeight: 1.8,
-                  fontFamily: 'monospace',
-                }}>{`set JAVA_HOME=C:\\Program Files\\Android\\Android Studio\\jbr\nset ANDROID_HOME=C:\\Users\\moham\\AppData\\Local\\Android\\Sdk\ncd driverapp\\android\ngradlew.bat assembleRelease`}</pre>
-              </li>
-              <li>Copy the output APK into the server folder:
-                <pre style={{
-                  background: '#1e1e1e',
-                  color: '#d4d4d4',
-                  padding: '12px 16px',
-                  borderRadius: 6,
-                  marginTop: 8,
-                  marginBottom: 4,
-                  overflowX: 'auto',
-                  fontSize: '0.8rem',
-                  lineHeight: 1.8,
-                  fontFamily: 'monospace',
-                }}>{`copy driverapp\\android\\app\\build\\outputs\\apk\\release\\app-release.apk server\\public\\apk\\app-release.apk`}</pre>
-              </li>
-              <li>Deploy the server — the new APK and version name are live instantly.</li>
-            </ol>
+            <pre style={{
+              background: '#1e1e1e',
+              color: '#d4d4d4',
+              padding: '12px 16px',
+              borderRadius: 6,
+              fontSize: '0.85rem',
+              fontFamily: 'monospace',
+            }}>python release.py</pre>
+            <p style={{ fontSize: '0.85rem', marginTop: 12 }}>
+              The script will ask for the new version number, build the APK, copy it here, and update the version — then just deploy the server.
+            </p>
           </div>
         </div>
       </>
