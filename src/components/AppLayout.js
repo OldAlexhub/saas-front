@@ -98,6 +98,13 @@ const icons = {
       <path d="M9 16h4" />
     </Icon>
   ),
+  download: (
+    <Icon>
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
+    </Icon>
+  ),
   menu: (
     <Icon>
       <path d="M4 6h16" />
@@ -178,6 +185,7 @@ const navSections = [
       { to: '/fares', label: 'Fares', icon: icons.fares },
       { to: '/settings/app', label: 'Driver App Settings', icon: icons.fares, end: true },
       { to: '/settings/company', label: 'Company Settings', icon: icons.fares, end: true },
+      { to: '/settings/driver-app', label: 'Driver App Download', icon: icons.download, end: true },
       // Invoicing removed
     ],
   },

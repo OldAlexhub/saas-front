@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import AppLayout from "../../components/AppLayout";
+import { getApkDownloadUrl } from "../../services/appService";
 import { getDriver, updateDriver } from "../../services/driverService";
 
 const emptyForm = {
@@ -18,6 +19,7 @@ const emptyForm = {
   cbiExpiry: "",
   mvrExpiry: "",
   fingerPrintsExpiry: "",
+  status: "pending",
 };
 
 const formatDateInput = (value) => (value ? value.substring(0, 10) : "");
@@ -30,6 +32,10 @@ const DriversEdit = () => {
   const [fetching, setFetching] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [statusBusy, setStatusBusy] = useState(false);
+  const [statusError, setStatusError] = useState("");
+  const [justApproved, setJustApproved] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const fetchDriver = async () => {
@@ -49,6 +55,7 @@ const DriversEdit = () => {
             cbiExpiry: data.cbiExpiry || "",
             mvrExpiry: data.mvrExpiry || "",
             fingerPrintsExpiry: data.fingerPrintsExpiry || "",
+            status: data.status || "pending",
           });
         }
       } catch (err) {
@@ -80,6 +87,30 @@ const DriversEdit = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleStatusChange = async (nextStatus) => {
+    setStatusBusy(true);
+    setStatusError("");
+    setJustApproved(false);
+    try {
+      const res = await updateDriver(id, { status: nextStatus });
+      const updated = res.data?.driver || res.data?.data || res.data;
+      const saved = updated?.status || nextStatus;
+      setForm((prev) => ({ ...prev, status: saved }));
+      if (saved === "approved") setJustApproved(true);
+    } catch (err) {
+      setStatusError(err.response?.data?.message || "Failed to update status");
+    } finally {
+      setStatusBusy(false);
+    }
+  };
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(getApkDownloadUrl()).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    });
   };
 
   const actions = (
@@ -261,6 +292,77 @@ const DriversEdit = () => {
                     required
                   />
                 </div>
+              </div>
+            </div>
+
+            <div className="form-section">
+              <div>
+                <h3>Operational status</h3>
+                <p>Control whether this driver is cleared to operate. Approving generates a shareable app download link.</p>
+              </div>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+                  <span>
+                    Current status:{" "}
+                    <span
+                      className={
+                        form.status === "approved"
+                          ? "badge badge-success"
+                          : form.status === "inactive"
+                          ? "badge badge-warning"
+                          : "badge badge-info"
+                      }
+                    >
+                      {form.status === "approved" ? "Approved" : form.status === "inactive" ? "Inactive" : "Pending"}
+                    </span>
+                  </span>
+                </div>
+                <div className="pill-group">
+                  <button
+                    type="button"
+                    className="pill-button"
+                    disabled={statusBusy || form.status === "approved"}
+                    onClick={() => handleStatusChange("approved")}
+                  >
+                    Approve to operate
+                  </button>
+                  <button
+                    type="button"
+                    className="pill-button"
+                    disabled={statusBusy || form.status === "inactive"}
+                    onClick={() => handleStatusChange("inactive")}
+                  >
+                    Deactivate
+                  </button>
+                  <button
+                    type="button"
+                    className="pill-button"
+                    disabled={statusBusy || form.status === "pending"}
+                    onClick={() => handleStatusChange("pending")}
+                  >
+                    Reset to pending
+                  </button>
+                </div>
+                {statusError && <div className="feedback error" style={{ marginTop: 8 }}>{statusError}</div>}
+
+                {(justApproved || form.status === "approved") && (
+                  <div className="feedback info" style={{ marginTop: 16 }}>
+                    {justApproved && <p style={{ marginBottom: 8 }}><strong>Driver approved.</strong> Share the link below so they can download the app.</p>}
+                    {!justApproved && <p style={{ marginBottom: 8 }}>This driver is approved to operate. Share the link below to let them install the app.</p>}
+                    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                      <input
+                        type="text"
+                        readOnly
+                        value={getApkDownloadUrl()}
+                        style={{ flex: 1, minWidth: 0 }}
+                        onFocus={(e) => e.target.select()}
+                      />
+                      <button type="button" className="btn btn-primary" onClick={handleCopyLink}>
+                        {copied ? "Copied!" : "Copy link"}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

@@ -23,6 +23,7 @@ import ReceiptGenerator from './pages/reports/ReceiptGenerator';
 import ReportsBuilder from './pages/reports/ReportsBuilder';
 import AppSettings from './pages/settings/AppSettings';
 import CompanySettings from './pages/settings/CompanySettings';
+import DriverAppDownload from './pages/settings/DriverAppDownload';
 import DriverMessaging from './pages/settings/DriverMessaging';
 import Signup from './pages/Signup';
 import VehiclesCreate from './pages/vehicles/VehiclesCreate';
@@ -125,6 +126,9 @@ function App() {
       <Route
         path="/settings/messaging"
         element={token ? <DriverMessaging /> : <Navigate to="/login" replace />} />
+      <Route
+        path="/settings/driver-app"
+        element={token ? <DriverAppDownload /> : <Navigate to="/login" replace />} />
       {/* Accounting routes removed */}
     </Routes>
   );

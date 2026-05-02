@@ -113,7 +113,19 @@ const DriversView = () => {
               <dt>Company</dt>
               <dd>{driver.company || '—'}</dd>
               <dt>Status</dt>
-              <dd>{driver.status || '—'}</dd>
+              <dd>
+                <span
+                  className={
+                    driver.status === 'approved'
+                      ? 'badge badge-success'
+                      : driver.status === 'inactive'
+                      ? 'badge badge-warning'
+                      : 'badge badge-info'
+                  }
+                >
+                  {driver.status === 'approved' ? 'Approved' : driver.status === 'inactive' ? 'Inactive' : 'Pending'}
+                </span>
+              </dd>
             </dl>
           </div>
         </div>
