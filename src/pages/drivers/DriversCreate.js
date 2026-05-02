@@ -1,7 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AppLayout from '../../components/AppLayout';
-import { addDriver } from '../../services/driverService';
+import {
+  addDriver,
+  importEnrollmeDriver,
+  listEnrollmeDriverImportCandidates,
+} from '../../services/driverService';
 
 const DriversCreate = () => {
   const navigate = useNavigate();
@@ -22,6 +26,38 @@ const DriversCreate = () => {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [enrollmeApplications, setEnrollmeApplications] = useState([]);
+  const [selectedEnrollmeId, setSelectedEnrollmeId] = useState('');
+  const [enrollmeLoading, setEnrollmeLoading] = useState(false);
+  const [enrollmeImporting, setEnrollmeImporting] = useState(false);
+  const [enrollmeError, setEnrollmeError] = useState('');
+  const [enrollmeNotice, setEnrollmeNotice] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    setEnrollmeLoading(true);
+    listEnrollmeDriverImportCandidates()
+      .then((res) => {
+        if (!active) return;
+        const applications = res.data?.applications || [];
+        setEnrollmeApplications(applications);
+      })
+      .catch((err) => {
+        if (!active) return;
+        setEnrollmeError(err.response?.data?.message || 'Failed to load EnrollMe applications');
+      })
+      .finally(() => {
+        if (active) setEnrollmeLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const selectedEnrollmeApplication = useMemo(
+    () => enrollmeApplications.find((application) => application.id === selectedEnrollmeId) || null,
+    [enrollmeApplications, selectedEnrollmeId],
+  );
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -43,6 +79,47 @@ const DriversCreate = () => {
     }
   };
 
+  const formatApiErrors = (data) => {
+    const details = data?.errors;
+    if (!Array.isArray(details) || details.length === 0) return '';
+    return details
+      .map((item) => {
+        if (typeof item === 'string') return item;
+        return [item.field, item.message].filter(Boolean).join(': ');
+      })
+      .filter(Boolean)
+      .join(' ');
+  };
+
+  const handleEnrollmePrefill = () => {
+    if (!selectedEnrollmeApplication) return;
+    const prefill = selectedEnrollmeApplication.prefill || {};
+    setForm((prev) => ({
+      ...prev,
+      ...prefill,
+      ssn: prev.ssn,
+    }));
+    setEnrollmeError('');
+    setEnrollmeNotice(`Prefilled from ${selectedEnrollmeApplication.name || selectedEnrollmeApplication.email}.`);
+  };
+
+  const handleEnrollmeImport = async () => {
+    if (!selectedEnrollmeApplication) return;
+    setEnrollmeError('');
+    setEnrollmeNotice('');
+    setEnrollmeImporting(true);
+    try {
+      await importEnrollmeDriver(selectedEnrollmeApplication.id);
+      navigate('/drivers');
+    } catch (err) {
+      const data = err.response?.data;
+      const detail = formatApiErrors(data);
+      setEnrollmeError([data?.message || 'Failed to import EnrollMe application', detail].filter(Boolean).join(' '));
+    } finally {
+      setEnrollmeImporting(false);
+    }
+  };
+
   const actions = (
     <Link to="/drivers" className="btn btn-ghost">
       Back to list
@@ -56,6 +133,64 @@ const DriversCreate = () => {
       actions={actions}
     >
       <div className="surface">
+        <div className="enrollme-import-section">
+          <div>
+            <h3>EnrollMe source</h3>
+            <p>Use a completed EnrollMe application as an optional source for this driver record.</p>
+          </div>
+          <div className="enrollme-import-controls">
+            <select
+              value={selectedEnrollmeId}
+              onChange={(event) => {
+                setSelectedEnrollmeId(event.target.value);
+                setEnrollmeError('');
+                setEnrollmeNotice('');
+              }}
+              disabled={enrollmeLoading}
+            >
+              <option value="">{enrollmeLoading ? 'Loading EnrollMe applications...' : 'Select EnrollMe application'}</option>
+              {enrollmeApplications.map((application) => (
+                <option value={application.id} key={application.id}>
+                  {(application.name || application.email || application.id)} - {application.status}
+                  {application.canImport ? '' : ' - needs review'}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={handleEnrollmePrefill}
+              disabled={!selectedEnrollmeApplication}
+            >
+              Prefill form
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleEnrollmeImport}
+              disabled={!selectedEnrollmeApplication?.canImport || enrollmeImporting}
+            >
+              {enrollmeImporting ? 'Importing...' : 'Import driver'}
+            </button>
+          </div>
+          {selectedEnrollmeApplication && (
+            <div className="enrollme-import-details">
+              <span>{selectedEnrollmeApplication.email || 'No email'}</span>
+              <span>SSN {selectedEnrollmeApplication.hasSsn ? 'on file' : 'missing'}</span>
+              <span>{selectedEnrollmeApplication.canImport ? 'Ready to import' : 'Cannot import yet'}</span>
+            </div>
+          )}
+          {selectedEnrollmeApplication?.errors?.length > 0 && (
+            <ul className="enrollme-import-errors">
+              {selectedEnrollmeApplication.errors.map((item, index) => (
+                <li key={`${item}-${index}`}>{item}</li>
+              ))}
+            </ul>
+          )}
+          {enrollmeError && <div className="feedback error">{enrollmeError}</div>}
+          {enrollmeNotice && <div className="feedback success">{enrollmeNotice}</div>}
+        </div>
+
         <form onSubmit={handleSubmit}>
           <div className="form-section">
             <div>

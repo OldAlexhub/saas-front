@@ -960,6 +960,82 @@ a:hover {
   font-size: 0.9rem;
 }
 
+.enrollme-import-section {
+  display: grid;
+  gap: 14px;
+  padding-bottom: 24px;
+  margin-bottom: 28px;
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.enrollme-import-section h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.enrollme-import-section p {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.enrollme-import-controls {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.enrollme-import-controls select {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(15, 23, 42, 0.6);
+  color: var(--text-primary);
+  outline: none;
+}
+
+.enrollme-import-controls select:focus {
+  border-color: rgba(96, 165, 250, 0.6);
+  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.18);
+}
+
+.enrollme-import-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+.enrollme-import-details span {
+  padding-right: 10px;
+  border-right: 1px solid var(--surface-border);
+}
+
+.enrollme-import-details span:last-child {
+  border-right: 0;
+}
+
+.enrollme-import-errors {
+  margin: 0;
+  padding-left: 18px;
+  color: #fca5a5;
+  font-size: 0.88rem;
+}
+
+@media (max-width: 720px) {
+  .enrollme-import-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .enrollme-import-controls .btn {
+    width: 100%;
+  }
+}
+
 .form-grid label {
   display: block;
   margin-bottom: 8px;
@@ -2586,4 +2662,3 @@ a:hover {
     transform: translateX(-50%);
   }
 }
-

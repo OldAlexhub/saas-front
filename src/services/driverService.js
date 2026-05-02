@@ -62,6 +62,18 @@ export const addDriver = (data) => {
   return API.post(withDriverBase(DRIVER_ADD_PATH || '/drivers'), data);
 };
 
+export const listEnrollmeDriverImportCandidates = (params = {}) => {
+  return API.get(withDriverBase('/drivers/enrollme/applications'), { params });
+};
+
+export const getEnrollmeDriverImportCandidate = (id) => {
+  return API.get(withDriverBase(`/drivers/enrollme/applications/${id}`));
+};
+
+export const importEnrollmeDriver = (id) => {
+  return API.post(withDriverBase(`/drivers/enrollme/applications/${id}/import`));
+};
+
 /**
  * Update an existing driver record.
  * @param {string} id - Driver's MongoDB _id.
@@ -99,4 +111,13 @@ export const setAppCredentials = (id, data) => {
   );
 };
 
-export default { listDrivers, getDriver, addDriver, updateDriver, setAppCredentials };
+export default {
+  listDrivers,
+  getDriver,
+  addDriver,
+  updateDriver,
+  setAppCredentials,
+  listEnrollmeDriverImportCandidates,
+  getEnrollmeDriverImportCandidate,
+  importEnrollmeDriver,
+};
