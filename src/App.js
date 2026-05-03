@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 
 // Pages
 // Accounting pages removed
+import AccidentReports from './pages/accidents/AccidentReports';
 import ActiveManage from './pages/actives/ActiveManage';
 import ActivesList from './pages/actives/ActivesList';
 import ActivesView from './pages/actives/ActivesView';
@@ -129,6 +130,9 @@ function App() {
       <Route
         path="/settings/driver-app"
         element={token ? <DriverAppDownload /> : <Navigate to="/login" replace />} />
+      <Route
+        path="/accidents"
+        element={token ? <AccidentReports /> : <Navigate to="/login" replace />} />
       {/* Accounting routes removed */}
     </Routes>
   );

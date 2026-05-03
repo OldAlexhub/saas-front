@@ -98,6 +98,13 @@ const icons = {
       <path d="M9 16h4" />
     </Icon>
   ),
+  accidents: (
+    <Icon>
+      <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+      <line x1="12" y1="9" x2="12" y2="13" />
+      <line x1="12" y1="17" x2="12.01" y2="17" />
+    </Icon>
+  ),
   download: (
     <Icon>
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -174,6 +181,7 @@ const navSections = [
       { to: '/reports/builder', label: 'Report Designer', icon: icons.reports, end: true },
       { to: '/reports/receipts', label: 'Generate Receipts', icon: icons.reports, end: true },
       { to: '/reports/diagnostics', label: 'Diagnostics', icon: icons.reports, end: true },
+      { to: '/accidents', label: 'Accident Reports', icon: icons.accidents, end: true },
     ],
   },
   {
