@@ -68,7 +68,7 @@ const DriverAppDownload = () => {
         <div className="grid-two">
           <div className="metric-card">
             <h3>Current release</h3>
-            <div className="metric-subline">Built from driverapp/package.json</div>
+            <div className="metric-subline">Version from server/public/apk/version.json</div>
             <dl className="meta-grid">
               <dt>Version</dt>
               <dd>{info?.version ?? '—'}</dd>
@@ -85,13 +85,13 @@ const DriverAppDownload = () => {
             <h3>Admin download</h3>
             <div className="metric-subline">Download the APK directly to your device</div>
             <div style={{ marginTop: 24 }}>
-              <a
-                href={downloadUrl}
+              <button
+                type="button"
                 className="btn btn-primary"
-                download
+                onClick={() => window.open(downloadUrl, '_blank', 'noopener,noreferrer')}
               >
                 {icons.download} Download APK
-              </a>
+              </button>
             </div>
             {info?.version && (
               <p style={{ marginTop: 12, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
