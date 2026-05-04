@@ -2,6 +2,16 @@ import { useEffect, useState } from 'react';
 import AppLayout from '../../components/AppLayout';
 import { getAppInfo, getApkDownloadUrl } from '../../services/appService';
 
+const icons = {
+  download: (
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
+  ),
+};
+
 const fmt = (bytes) => {
   if (!bytes) return '—';
   const mb = bytes / (1024 * 1024);
@@ -75,17 +85,17 @@ const DriverAppDownload = () => {
             <h3>Admin download</h3>
             <div className="metric-subline">Download the APK directly to your device</div>
             <div style={{ marginTop: 24 }}>
-              <button
-                type="button"
+              <a
+                href={downloadUrl}
                 className="btn btn-primary"
-                onClick={() => { window.location.href = downloadUrl; }}
+                download
               >
-                Download APK
-              </button>
+                {icons.download} Download APK
+              </a>
             </div>
             {info?.version && (
-              <p className="muted" style={{ marginTop: 12, fontSize: '0.8rem' }}>
-                TaxiOps-Driver-v{info.version}.apk
+              <p style={{ marginTop: 12, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                TaxiOps-Driver-v{info.version}.apk &nbsp;·&nbsp; {fmt(info.sizeBytes)}
               </p>
             )}
           </div>
