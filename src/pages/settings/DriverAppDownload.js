@@ -85,13 +85,13 @@ const DriverAppDownload = () => {
             <h3>Admin download</h3>
             <div className="metric-subline">Download the APK directly to your device</div>
             <div style={{ marginTop: 24 }}>
-              <button
-                type="button"
+              <a
+                href={downloadUrl}
                 className="btn btn-primary"
-                onClick={() => window.open(downloadUrl, '_blank', 'noopener,noreferrer')}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}
               >
                 {icons.download} Download APK
-              </button>
+              </a>
             </div>
             {info?.version && (
               <p style={{ marginTop: 12, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
