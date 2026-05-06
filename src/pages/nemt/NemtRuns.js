@@ -81,9 +81,9 @@ const NemtRuns = () => {
           </thead>
           <tbody>
             {filtered.map((r) => (
-              <tr key={r._id}>
+              <tr key={r.id}>
                 <td data-label="Run">
-                  <span className="primary">{r.runId || r._id?.slice(-6)}</span>
+                  <span className="primary">{r.runId || r.id?.slice(-6)}</span>
                 </td>
                 <td data-label="Service date">
                   {r.serviceDate ? new Date(r.serviceDate).toLocaleDateString() : '—'}
@@ -103,7 +103,7 @@ const NemtRuns = () => {
                   <span className={`badge ${statusBadge(r.status)}`}>{r.status}</span>
                 </td>
                 <td data-label="Actions">
-                  <Link className="pill-button" to={`/nemt/runs/${r._id}`}>Manage</Link>
+                  <Link className="pill-button" to={`/nemt/runs/${r.id}`}>Manage</Link>
                 </td>
               </tr>
             ))}

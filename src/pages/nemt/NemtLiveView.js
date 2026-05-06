@@ -40,7 +40,7 @@ function RunCard({ run }) {
     <div className="card h-100 shadow-sm">
       <div className="card-header d-flex align-items-center justify-content-between py-2">
         <span className="fw-semibold">
-          <Link to={`/nemt/runs/${run._id}`}>Run {run.runId}</Link>
+          <Link to={`/nemt/runs/${run.id}`}>Run {run.runId}</Link>
         </span>
         <span className={STATUS_CLASS[run.status] || 'badge bg-secondary'}>
           {STATUS_LABEL[run.status] || run.status}
@@ -103,7 +103,7 @@ function StatusSection({ status, runs }) {
       </h6>
       <div className="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3">
         {runs.map((r) => (
-          <div key={r._id} className="col">
+          <div key={r.id} className="col">
             <RunCard run={r} />
           </div>
         ))}

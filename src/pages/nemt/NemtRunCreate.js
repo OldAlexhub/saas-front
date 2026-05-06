@@ -55,7 +55,7 @@ const NemtRunCreate = () => {
       };
       const res = await createRun(payload);
       const created = res.data?.run;
-      navigate(`/nemt/runs/${created?._id}`);
+      navigate(`/nemt/runs/${created?.id}`);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to create run.');
       setSaving(false);

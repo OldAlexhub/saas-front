@@ -179,10 +179,10 @@ const NemtTrips = () => {
           </thead>
           <tbody>
             {filtered.map((t) => (
-              <tr key={t._id}>
+              <tr key={t.id}>
                 <td data-label="Trip">
                   <div className="table-stack">
-                    <span className="primary">#{t.tripId || t._id?.slice(-6)}</span>
+                    <span className="primary">#{t.tripId || t.id?.slice(-6)}</span>
                     {t.agencyTripRef && <span className="secondary">Ref: {t.agencyTripRef}</span>}
                   </div>
                 </td>
@@ -211,7 +211,7 @@ const NemtTrips = () => {
                 </td>
                 <td data-label="Driver">{t.driverId || 'Unassigned'}</td>
                 <td data-label="Actions">
-                  <Link className="pill-button" to={`/nemt/trips/${t._id}`}>Manage</Link>
+                  <Link className="pill-button" to={`/nemt/trips/${t.id}`}>Manage</Link>
                 </td>
               </tr>
             ))}

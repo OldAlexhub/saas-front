@@ -112,7 +112,7 @@ const NemtTripCreate = () => {
       });
       const res = await createTrip(payload);
       const created = res.data?.trip;
-      navigate(`/nemt/trips/${created?._id || ''}`);
+      navigate(`/nemt/trips/${created?.id || ''}`);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to create trip.');
     } finally {

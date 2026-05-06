@@ -140,7 +140,7 @@ const NemtRunDetail = () => {
     setMessage('');
     setError('');
     try {
-      await reorderRun(id, { tripIds: newTrips.map((t) => t._id) });
+      await reorderRun(id, { tripIds: newTrips.map((t) => t.id) });
       setMessage('Order saved.');
     } catch (err) {
       setError(err.response?.data?.message || 'Reorder failed.');
@@ -157,7 +157,7 @@ const NemtRunDetail = () => {
     setError('');
     try {
       await removeTripFromRun(id, tripId);
-      setTrips((prev) => prev.filter((t) => t._id !== tripId));
+      setTrips((prev) => prev.filter((t) => t.id !== tripId));
       setMessage('Trip removed.');
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to remove trip.');
@@ -179,7 +179,7 @@ const NemtRunDetail = () => {
       } else {
         await loadRun();
       }
-      setUnassigned((prev) => prev.filter((t) => t._id !== tripId));
+      setUnassigned((prev) => prev.filter((t) => t.id !== tripId));
       setMessage('Trip added to run.');
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to add trip.');
@@ -334,10 +334,10 @@ const NemtRunDetail = () => {
                     {trips.map((t, idx) => {
                       const locked = TERMINAL_TRIP.has(t.status) || ['EnRoute','ArrivedPickup','PickedUp','ArrivedDrop'].includes(t.status);
                       return (
-                        <tr key={t._id}>
+                        <tr key={t.id}>
                           <td data-label="#">{idx + 1}</td>
                           <td data-label="Trip">
-                            <Link to={`/nemt/trips/${t._id}`}>#{t.tripId || t._id?.slice(-6)}</Link>
+                            <Link to={`/nemt/trips/${t.id}`}>#{t.tripId || t.id?.slice(-6)}</Link>
                           </td>
                           <td data-label="Passenger">
                             <div className="table-stack">
@@ -389,7 +389,7 @@ const NemtRunDetail = () => {
                                   type="button"
                                   className="btn btn-ghost"
                                   style={{ padding: '2px 8px', color: 'var(--color-warning)' }}
-                                  onClick={() => handleRemoveTrip(t._id)}
+                                  onClick={() => handleRemoveTrip(t.id)}
                                   disabled={saving}
                                 >✕</button>
                               )}
@@ -465,8 +465,8 @@ const NemtRunDetail = () => {
                       <thead><tr><th>Trip</th><th>Passenger</th><th>Pickup time</th><th></th></tr></thead>
                       <tbody>
                         {filteredUnassigned.map((t) => (
-                          <tr key={t._id}>
-                            <td>#{t.tripId || t._id?.slice(-6)}</td>
+                          <tr key={t.id}>
+                            <td>#{t.tripId || t.id?.slice(-6)}</td>
                             <td>{t.passengerName || '—'}</td>
                             <td>
                               {t.scheduledPickupTime
@@ -477,10 +477,10 @@ const NemtRunDetail = () => {
                               <button
                                 type="button"
                                 className="pill-button"
-                                onClick={() => handleAddTrip(t._id)}
-                                disabled={addingTrip === t._id}
+                                onClick={() => handleAddTrip(t.id)}
+                                disabled={addingTrip === t.id}
                               >
-                                {addingTrip === t._id ? '…' : 'Add'}
+                                {addingTrip === t.id ? '…' : 'Add'}
                               </button>
                             </td>
                           </tr>
