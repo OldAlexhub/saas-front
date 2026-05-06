@@ -4,6 +4,25 @@ import { Link } from 'react-router-dom';
 import AppLayout from '../../components/AppLayout';
 import { listAgencies, listTrips, importTrips } from '../../services/nemtService';
 
+const REQUIRED_HEADERS = [
+  { field: 'Passenger Name',        accepted: 'Passenger Name · Name · Patient Name',                    required: true  },
+  { field: 'Pickup Address',        accepted: 'Pickup Address · Pickup · Pick Up Address',                required: true  },
+  { field: 'Dropoff Address',       accepted: 'Dropoff Address · Destination · Drop Off · Drop Off Address', required: true  },
+  { field: 'Pickup Time',           accepted: 'Pickup Time · Scheduled Pickup · Pick Up Time',            required: true  },
+];
+
+const OPTIONAL_HEADERS = [
+  { field: 'Trip ID / Ref',         accepted: 'Trip ID · Trip Ref · Order # · Order ID'           },
+  { field: 'Phone',                 accepted: 'Phone · Passenger Phone · Telephone'                },
+  { field: 'Member ID',             accepted: 'Member ID · Patient ID · Member #'                  },
+  { field: 'Date of Birth',         accepted: 'DOB · Date of Birth · Birthdate'                    },
+  { field: 'Mobility Type',         accepted: 'Mobility · Mobility Type · Mobility Code  (values: ambulatory, wheelchair, wheelchair_xl, stretcher)' },
+  { field: 'Passenger Count',       accepted: 'Passengers · Passenger Count'                       },
+  { field: 'Attendant Count',       accepted: 'Attendants · Attendant Count'                       },
+  { field: 'Appointment Time',      accepted: 'Appointment Time · Appointment · Appt · Appt Time'  },
+  { field: 'Special Instructions',  accepted: 'Special Instructions · Instructions · Notes · Comments' },
+];
+
 const now = new Date();
 const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
@@ -33,6 +52,12 @@ const NemtTrips = () => {
   const [importing, setImporting] = useState(false);
   const [importMsg, setImportMsg] = useState('');
   const [importErr, setImportErr] = useState('');
+
+  // Import modal state
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importAgencyId, setImportAgencyId] = useState('');
+  const [importServiceDate, setImportServiceDate] = useState(todayIso);
+  const [showHeaderRef, setShowHeaderRef] = useState(false);
 
   const { data: agenciesData } = useQuery({
     queryKey: ['nemt-agencies'],
@@ -73,21 +98,36 @@ const NemtTrips = () => {
     });
   }, [trips, search, status]);
 
+  const openImportModal = () => {
+    setImportAgencyId('');
+    setImportServiceDate(todayIso);
+    setImportMsg('');
+    setImportErr('');
+    setShowHeaderRef(false);
+    setShowImportModal(true);
+  };
+
   const handleImport = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!importAgencyId) { setImportErr('Please select an agency first.'); return; }
+    if (!importServiceDate) { setImportErr('Please enter a service date first.'); return; }
     setImporting(true);
     setImportMsg('');
     setImportErr('');
     try {
       const fd = new FormData();
       fd.append('file', file);
+      fd.append('agencyId', importAgencyId);
+      fd.append('serviceDate', importServiceDate);
       const res = await importTrips(fd);
-      const { imported, errors } = res.data;
-      let msg = `Imported ${imported} trip${imported !== 1 ? 's' : ''}.`;
-      if (errors?.length) msg += ` ${errors.length} row(s) skipped.`;
+      const { created, skipped, errors } = res.data;
+      let msg = `Imported ${created} trip${created !== 1 ? 's' : ''}.`;
+      if (skipped) msg += ` ${skipped} row(s) skipped.`;
       setImportMsg(msg);
+      if (errors?.length) setImportErr(errors.map((e) => (typeof e === 'string' ? e : `Row ${e.row}: ${e.message}`)).join(' · '));
       qc.invalidateQueries({ queryKey: ['nemt-trips'] });
+      if (!errors?.length) setShowImportModal(false);
     } catch (err) {
       setImportErr(err.response?.data?.message || 'Import failed.');
     } finally {
@@ -98,13 +138,8 @@ const NemtTrips = () => {
 
   const actions = (
     <div style={{ display: 'flex', gap: 8 }}>
-      <button
-        type="button"
-        className="btn btn-subtle"
-        disabled={importing}
-        onClick={() => fileRef.current?.click()}
-      >
-        {importing ? 'Importing…' : 'Import CSV / XLSX'}
+      <button type="button" className="btn btn-subtle" onClick={openImportModal}>
+        Import CSV / XLSX
       </button>
       <input
         ref={fileRef}
@@ -189,10 +224,103 @@ const NemtTrips = () => {
       subtitle="Pre-scheduled non-emergency medical transportation trips."
       actions={actions}
     >
-      <div className="surface">
-        {importMsg && <div className="feedback success">{importMsg}</div>}
-        {importErr && <div className="feedback error">{importErr}</div>}
+      {showImportModal && (
+        <div className="modal-overlay" onClick={() => setShowImportModal(false)}>
+          <div className="modal-card" style={{ maxWidth: 640 }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 style={{ margin: 0 }}>Import trips from CSV / XLSX</h3>
+              <button type="button" className="btn btn-ghost" onClick={() => setShowImportModal(false)}>✕</button>
+            </div>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
+              {importMsg && <div className="feedback success">{importMsg}</div>}
+              {importErr && <div className="feedback error">{importErr}</div>}
+
+              <div className="form-grid">
+                <div>
+                  <label htmlFor="importAgency">Agency <span style={{ color: '#f87171' }}>*</span></label>
+                  <select id="importAgency" value={importAgencyId} onChange={(e) => setImportAgencyId(e.target.value)}>
+                    <option value="">Select agency…</option>
+                    {agencies.map((a) => (
+                      <option key={a._id} value={a.agencyId}>{a.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="importDate">Service date <span style={{ color: '#f87171' }}>*</span></label>
+                  <input id="importDate" type="date" value={importServiceDate} onChange={(e) => setImportServiceDate(e.target.value)} />
+                </div>
+              </div>
+
+              {/* Header reference */}
+              <div>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  style={{ fontSize: 13, padding: '4px 8px' }}
+                  onClick={() => setShowHeaderRef((v) => !v)}
+                >
+                  {showHeaderRef ? '▾' : '▸'} Column header reference
+                </button>
+
+                {showHeaderRef && (
+                  <div style={{ marginTop: 10, fontSize: 13 }}>
+                    <p style={{ color: 'var(--text-secondary)', marginBottom: 8 }}>
+                      Your file must have a header row. Column names are case-insensitive and spaces/underscores/dashes are ignored.
+                      The <strong>agency</strong> and <strong>service date</strong> apply to all rows in the file — you do not need those columns.
+                    </p>
+
+                    <table className="data-table" style={{ marginBottom: 12 }}>
+                      <thead>
+                        <tr>
+                          <th>Field</th>
+                          <th>Required</th>
+                          <th>Accepted column names</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {REQUIRED_HEADERS.map((h) => (
+                          <tr key={h.field}>
+                            <td><strong>{h.field}</strong></td>
+                            <td style={{ color: '#f87171', fontWeight: 700 }}>Yes</td>
+                            <td style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{h.accepted}</td>
+                          </tr>
+                        ))}
+                        {OPTIONAL_HEADERS.map((h) => (
+                          <tr key={h.field}>
+                            <td>{h.field}</td>
+                            <td style={{ color: 'var(--text-secondary)' }}>No</td>
+                            <td style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{h.accepted}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+
+                    <p style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
+                      <strong>Tip:</strong> Pickup/appointment times can be full datetime strings (e.g. <code>2025-06-01 09:30</code>) or Excel date-time cells.
+                      Rows missing Passenger Name, Pickup Address, Dropoff Address, or Pickup Time are skipped and reported as errors.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={importing || !importAgencyId || !importServiceDate}
+                  onClick={() => fileRef.current?.click()}
+                >
+                  {importing ? 'Importing…' : 'Choose file & import'}
+                </button>
+                <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>Accepts .csv, .xlsx, .xls — max 10 MB</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="surface">
         <div className="toolbar">
           <div className="search-input">
             <span className="icon">🔍</span>

@@ -3,8 +3,23 @@ import { useNavigate } from 'react-router-dom';
 import AppLayout from '../../components/AppLayout';
 import { listAgencies, createTrip, getNemtSettings } from '../../services/nemtService';
 
-const MOBILITY_TYPES = ['Ambulatory', 'Wheelchair', 'Stretcher', 'GurneyVan'];
-const TRIP_DIRECTIONS = ['OneWay', 'RoundTrip'];
+const MOBILITY_TYPES = [
+  { value: 'ambulatory',   label: 'Ambulatory' },
+  { value: 'wheelchair',   label: 'Wheelchair' },
+  { value: 'wheelchair_xl',label: 'Wheelchair XL' },
+  { value: 'stretcher',    label: 'Stretcher' },
+  { value: 'other',        label: 'Other' },
+];
+const TRIP_DIRECTIONS = [
+  { value: 'outbound', label: 'Outbound (one-way)' },
+  { value: 'return',   label: 'Return' },
+];
+const FARE_BASIS_OPTIONS = [
+  { value: '',         label: 'Select…' },
+  { value: 'per_trip', label: 'Per trip (flat)' },
+  { value: 'per_mile', label: 'Per mile' },
+  { value: 'flat',     label: 'Flat rate' },
+];
 
 const empty = () => ({
   agencyId: '',
@@ -12,7 +27,7 @@ const empty = () => ({
   serviceDate: '',
   passengerName: '',
   passengerPhone: '',
-  mobilityType: 'Ambulatory',
+  mobilityType: 'ambulatory',
   passengerCount: 1,
   attendantCount: 0,
   specialInstructions: '',
@@ -22,7 +37,7 @@ const empty = () => ({
   pickupWindowLatest: '',
   dropoffAddress: '',
   appointmentTime: '',
-  tripDirection: 'OneWay',
+  tripDirection: 'outbound',
   agencyFare: '',
   agencyFareBasis: '',
   estimatedMiles: '',
@@ -36,6 +51,7 @@ const NemtTripCreate = () => {
   const [form, setForm] = useState(empty());
   const [agencies, setAgencies] = useState([]);
   const [paySettings, setPaySettings] = useState(null);
+  const [windowSettings, setWindowSettings] = useState({ minutesBefore: 15, minutesAfter: 15 });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -49,9 +65,26 @@ const NemtTripCreate = () => {
           percentage: s.defaultPayPercentage ?? 0,
           perTrip: s.defaultPayRatePerTrip ?? 0,
         });
+        setWindowSettings({
+          minutesBefore: s.defaultPickupWindowMinutesBefore ?? 15,
+          minutesAfter: s.defaultPickupWindowMinutesAfter ?? 15,
+        });
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!form.scheduledPickupTime) return;
+    const base = new Date(form.scheduledPickupTime);
+    if (isNaN(base.getTime())) return;
+    const toLocal = (d) => {
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    };
+    const earliest = new Date(base.getTime() - windowSettings.minutesBefore * 60000);
+    const latest = new Date(base.getTime() + windowSettings.minutesAfter * 60000);
+    setForm((prev) => ({ ...prev, pickupWindowEarliest: toLocal(earliest), pickupWindowLatest: toLocal(latest) }));
+  }, [form.scheduledPickupTime, windowSettings]);
 
   const set = (field) => (e) => {
     const val = e.target.type === 'number' ? e.target.value : e.target.value;
@@ -130,7 +163,7 @@ const NemtTripCreate = () => {
                   <div>
                     <label htmlFor="tripDirection">Direction</label>
                     <select id="tripDirection" value={form.tripDirection} onChange={set('tripDirection')}>
-                      {TRIP_DIRECTIONS.map((d) => <option key={d} value={d}>{d}</option>)}
+                      {TRIP_DIRECTIONS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
                     </select>
                   </div>
                   <div>
@@ -144,7 +177,7 @@ const NemtTripCreate = () => {
                   <div>
                     <label htmlFor="mobilityType">Mobility type</label>
                     <select id="mobilityType" value={form.mobilityType} onChange={set('mobilityType')}>
-                      {MOBILITY_TYPES.map((m) => <option key={m} value={m}>{m}</option>)}
+                      {MOBILITY_TYPES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
                     </select>
                   </div>
                   <div>
@@ -202,7 +235,9 @@ const NemtTripCreate = () => {
                   </div>
                   <div>
                     <label htmlFor="agencyFareBasis">Fare basis</label>
-                    <input id="agencyFareBasis" type="text" value={form.agencyFareBasis} onChange={set('agencyFareBasis')} placeholder="e.g. mileage, flat" />
+                    <select id="agencyFareBasis" value={form.agencyFareBasis} onChange={set('agencyFareBasis')}>
+                      {FARE_BASIS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
                   </div>
                   <div>
                     <label htmlFor="driverPay">

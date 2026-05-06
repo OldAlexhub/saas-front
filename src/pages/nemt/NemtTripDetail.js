@@ -3,7 +3,19 @@ import { Link, useParams } from 'react-router-dom';
 import AppLayout from '../../components/AppLayout';
 import { getTrip, updateTrip, cancelTrip, markTripNoShow } from '../../services/nemtService';
 
-const MOBILITY_TYPES = ['Ambulatory', 'Wheelchair', 'Stretcher', 'GurneyVan'];
+const MOBILITY_TYPES = [
+  { value: 'ambulatory',    label: 'Ambulatory' },
+  { value: 'wheelchair',    label: 'Wheelchair' },
+  { value: 'wheelchair_xl', label: 'Wheelchair XL' },
+  { value: 'stretcher',     label: 'Stretcher' },
+  { value: 'other',         label: 'Other' },
+];
+const FARE_BASIS_OPTIONS = [
+  { value: '',         label: 'Select…' },
+  { value: 'per_trip', label: 'Per trip (flat)' },
+  { value: 'per_mile', label: 'Per mile' },
+  { value: 'flat',     label: 'Flat rate' },
+];
 
 const statusBadge = (status) => {
   if (status === 'Completed') return 'badge-success';
@@ -188,7 +200,7 @@ const NemtTripDetail = () => {
                   <div>
                     <label htmlFor="mobilityType">Mobility</label>
                     <select id="mobilityType" value={form.mobilityType} onChange={set('mobilityType')} disabled={isTerminal}>
-                      {MOBILITY_TYPES.map((m) => <option key={m} value={m}>{m}</option>)}
+                      {MOBILITY_TYPES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
                     </select>
                   </div>
                   <div>
@@ -245,7 +257,9 @@ const NemtTripDetail = () => {
                   </div>
                   <div>
                     <label htmlFor="agencyFareBasis">Fare basis</label>
-                    <input id="agencyFareBasis" type="text" value={form.agencyFareBasis} onChange={set('agencyFareBasis')} disabled={isTerminal} />
+                    <select id="agencyFareBasis" value={form.agencyFareBasis} onChange={set('agencyFareBasis')} disabled={isTerminal}>
+                      {FARE_BASIS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
                   </div>
                   <div>
                     <label htmlFor="driverPay">Driver pay ($)</label>
@@ -253,7 +267,9 @@ const NemtTripDetail = () => {
                   </div>
                   <div>
                     <label htmlFor="driverPayBasis">Pay basis</label>
-                    <input id="driverPayBasis" type="text" value={form.driverPayBasis} onChange={set('driverPayBasis')} disabled={isTerminal} />
+                    <select id="driverPayBasis" value={form.driverPayBasis} onChange={set('driverPayBasis')} disabled={isTerminal}>
+                      {FARE_BASIS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
                   </div>
                   <div className="full-width">
                     <label htmlFor="internalNotes">Internal notes</label>

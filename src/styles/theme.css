@@ -2605,6 +2605,11 @@ a:hover {
   }
 }
 
+/* Override Bootstrap / any framework .text-muted so it stays readable on dark backgrounds */
+.text-muted {
+  color: var(--text-muted) !important;
+}
+
 .realtime-toast-container {
   position: fixed;
   bottom: 24px;

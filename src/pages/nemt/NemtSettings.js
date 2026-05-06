@@ -273,11 +273,11 @@ const NemtSettings = () => {
                       </small>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4 }}>
-                      <div style={{ fontSize: 13, color: '#6b7280' }}>Driver receives</div>
-                      <div style={{ fontSize: 22, fontWeight: 700, color: '#16a34a' }}>
+                      <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Driver receives</div>
+                      <div style={{ fontSize: 22, fontWeight: 700, color: '#4ade80' }}>
                         {driverReceivesPct.toFixed(1)}%
                       </div>
-                      <div style={{ fontSize: 12, color: '#9ca3af' }}>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                         e.g. $10 fare → driver gets ${(10 * driverReceivesPct / 100).toFixed(2)}
                       </div>
                     </div>
