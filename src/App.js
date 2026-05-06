@@ -4,6 +4,17 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 // Pages
 // Accounting pages removed
 import AccidentReports from './pages/accidents/AccidentReports';
+import NemtTrips from './pages/nemt/NemtTrips';
+import NemtTripCreate from './pages/nemt/NemtTripCreate';
+import NemtTripDetail from './pages/nemt/NemtTripDetail';
+import NemtRuns from './pages/nemt/NemtRuns';
+import NemtRunCreate from './pages/nemt/NemtRunCreate';
+import NemtRunDetail from './pages/nemt/NemtRunDetail';
+import NemtAgencies from './pages/nemt/NemtAgencies';
+import NemtSettings from './pages/nemt/NemtSettings';
+import NemtPay from './pages/nemt/NemtPay';
+import NemtReports from './pages/nemt/NemtReports';
+import NemtLiveView from './pages/nemt/NemtLiveView';
 import ActiveManage from './pages/actives/ActiveManage';
 import ActivesList from './pages/actives/ActivesList';
 import ActivesView from './pages/actives/ActivesView';
@@ -133,6 +144,18 @@ function App() {
       <Route
         path="/accidents"
         element={token ? <AccidentReports /> : <Navigate to="/login" replace />} />
+      {/* NEMT routes */}
+      <Route path="/nemt/trips" element={token ? <NemtTrips /> : <Navigate to="/login" replace />} />
+      <Route path="/nemt/trips/new" element={token ? <NemtTripCreate /> : <Navigate to="/login" replace />} />
+      <Route path="/nemt/trips/:id" element={token ? <NemtTripDetail /> : <Navigate to="/login" replace />} />
+      <Route path="/nemt/runs" element={token ? <NemtRuns /> : <Navigate to="/login" replace />} />
+      <Route path="/nemt/runs/new" element={token ? <NemtRunCreate /> : <Navigate to="/login" replace />} />
+      <Route path="/nemt/runs/:id" element={token ? <NemtRunDetail /> : <Navigate to="/login" replace />} />
+      <Route path="/nemt/agencies" element={token ? <NemtAgencies /> : <Navigate to="/login" replace />} />
+      <Route path="/nemt/pay" element={token ? <NemtPay /> : <Navigate to="/login" replace />} />
+      <Route path="/nemt/settings" element={token ? <NemtSettings /> : <Navigate to="/login" replace />} />
+      <Route path="/nemt/reports" element={token ? <NemtReports /> : <Navigate to="/login" replace />} />
+      <Route path="/nemt/live" element={token ? <NemtLiveView /> : <Navigate to="/login" replace />} />
       {/* Accounting routes removed */}
     </Routes>
   );

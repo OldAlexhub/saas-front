@@ -112,6 +112,14 @@ const icons = {
       <line x1="12" y1="15" x2="12" y2="3" />
     </Icon>
   ),
+  nemt: (
+    <Icon>
+      <rect x="3" y="11" width="18" height="8" rx="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+      <path d="M12 15v2" />
+      <path d="M9 15h6" />
+    </Icon>
+  ),
   menu: (
     <Icon>
       <path d="M4 6h16" />
@@ -182,6 +190,23 @@ const navSections = [
       { to: '/reports/receipts', label: 'Generate Receipts', icon: icons.reports, end: true },
       { to: '/reports/diagnostics', label: 'Diagnostics', icon: icons.reports, end: true },
       { to: '/accidents', label: 'Accident Reports', icon: icons.accidents, end: true },
+    ],
+  },
+  {
+    id: 'nemt',
+    type: 'group',
+    label: 'NEMT',
+    icon: icons.nemt,
+    items: [
+      { to: '/nemt/trips', label: 'Trips', icon: icons.nemt },
+      { to: '/nemt/trips/new', label: 'Add Trip', icon: icons.create, end: true },
+      { to: '/nemt/runs', label: 'Runs', icon: icons.nemt },
+      { to: '/nemt/runs/new', label: 'New Run', icon: icons.create, end: true },
+      { to: '/nemt/agencies', label: 'Agencies', icon: icons.nemt, end: true },
+      { to: '/nemt/pay', label: 'Pay & Billing', icon: icons.fares, end: true },
+      { to: '/nemt/reports', label: 'Reports', icon: icons.reports, end: true },
+      { to: '/nemt/live', label: 'Live View', icon: icons.nemt, end: true },
+      { to: '/nemt/settings', label: 'NEMT Settings', icon: icons.fares, end: true },
     ],
   },
   {
@@ -317,14 +342,53 @@ const AppLayout = ({ title, subtitle, actions, children }) => {
       pushNotification(`Cancelled "${title}".`, 'warning');
     };
 
+    const handleNemtRunDispatched = (payload = {}) => {
+      pushNotification(`NEMT run ${payload.runId || ''} dispatched to driver ${payload.driverId || ''}.`, 'info');
+    };
+
+    const handleNemtRunAcknowledged = (payload = {}) => {
+      pushNotification(`NEMT run ${payload.runId || ''} acknowledged by driver ${payload.driverId || ''}.`, 'info');
+    };
+
+    const handleNemtRunStarted = (payload = {}) => {
+      pushNotification(`NEMT run ${payload.runId || ''} is now active.`, 'info');
+    };
+
+    const handleNemtRunCompleted = (payload = {}) => {
+      pushNotification(`NEMT run ${payload.runId || ''} completed.`, 'success');
+    };
+
+    const handleNemtTripStatus = (payload = {}) => {
+      pushNotification(
+        `NEMT trip #${payload.tripId || ''} → ${payload.status || 'updated'}.`,
+        payload.status === 'Completed' ? 'success' : 'info',
+      );
+    };
+
+    const handleNemtTripCancelled = (payload = {}) => {
+      pushNotification(`NEMT trip #${payload.tripId || ''} cancelled.`, 'warning');
+    };
+
     socket.on('assignment:updated', handleAssignmentUpdate);
     socket.on('message:scheduled', handleMessageScheduled);
     socket.on('message:cancelled', handleMessageCancelled);
+    socket.on('nemt:run-dispatched', handleNemtRunDispatched);
+    socket.on('nemt:run-acknowledged', handleNemtRunAcknowledged);
+    socket.on('nemt:run-started', handleNemtRunStarted);
+    socket.on('nemt:run-completed', handleNemtRunCompleted);
+    socket.on('nemt:trip-status', handleNemtTripStatus);
+    socket.on('nemt:trip-cancelled', handleNemtTripCancelled);
 
     return () => {
       socket.off('assignment:updated', handleAssignmentUpdate);
       socket.off('message:scheduled', handleMessageScheduled);
       socket.off('message:cancelled', handleMessageCancelled);
+      socket.off('nemt:run-dispatched', handleNemtRunDispatched);
+      socket.off('nemt:run-acknowledged', handleNemtRunAcknowledged);
+      socket.off('nemt:run-started', handleNemtRunStarted);
+      socket.off('nemt:run-completed', handleNemtRunCompleted);
+      socket.off('nemt:trip-status', handleNemtTripStatus);
+      socket.off('nemt:trip-cancelled', handleNemtTripCancelled);
     };
   }, [socket, pushNotification]);
 
