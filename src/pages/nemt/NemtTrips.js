@@ -21,6 +21,9 @@ const OPTIONAL_HEADERS = [
   { field: 'Attendant Count',       accepted: 'Attendants · Attendant Count'                       },
   { field: 'Appointment Time',      accepted: 'Appointment Time · Appointment · Appt · Appt Time'  },
   { field: 'Special Instructions',  accepted: 'Special Instructions · Instructions · Notes · Comments' },
+  { field: 'Est. Miles',            accepted: 'Est Miles · Estimated Miles · Miles · Distance'      },
+  { field: 'Agency Fare ($)',       accepted: 'Agency Fare · Fare · Rate · Trip Fare — driver pay auto-calculated from this using your configured deduction %' },
+  { field: 'Fare Basis',            accepted: 'Fare Basis · Agency Fare Basis  (values: per_trip, per_mile, flat)'   },
 ];
 
 const now = new Date();
