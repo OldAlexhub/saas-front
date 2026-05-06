@@ -211,7 +211,7 @@ const BillingTab = () => {
                                   <tr key={t._id}>
                                     <td>#{t.tripId}</td>
                                     <td>{t.passengerName}</td>
-                                    <td>{t.serviceDate ? new Date(t.serviceDate).toLocaleDateString() : '—'}</td>
+                                    <td>{t.serviceDate ? new Date(t.serviceDate).toLocaleDateString(undefined, { timeZone: 'UTC' }) : '—'}</td>
                                     <td>{fmt(t.agencyFare)}</td>
                                   </tr>
                                 ))}
@@ -421,7 +421,7 @@ const PayTab = () => {
                                   <tr key={t._id}>
                                     <td>#{t.tripId}</td>
                                     <td>{t.passengerName}</td>
-                                    <td>{t.serviceDate ? new Date(t.serviceDate).toLocaleDateString() : '—'}</td>
+                                    <td>{t.serviceDate ? new Date(t.serviceDate).toLocaleDateString(undefined, { timeZone: 'UTC' }) : '—'}</td>
                                     <td>{fmt(t.driverPay)}</td>
                                     <td><span className={`badge ${statusBadge(t.payStatus)}`}>{t.payStatus}</span></td>
                                   </tr>

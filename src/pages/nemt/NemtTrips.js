@@ -187,7 +187,7 @@ const NemtTrips = () => {
                   </div>
                 </td>
                 <td data-label="Service date">
-                  {t.serviceDate ? new Date(t.serviceDate).toLocaleDateString() : '—'}
+                  {t.serviceDate ? new Date(t.serviceDate).toLocaleDateString(undefined, { timeZone: 'UTC' }) : '—'}
                 </td>
                 <td data-label="Passenger">
                   <div className="table-stack">

@@ -86,7 +86,7 @@ const NemtRuns = () => {
                   <span className="primary">{r.runId || r.id?.slice(-6)}</span>
                 </td>
                 <td data-label="Service date">
-                  {r.serviceDate ? new Date(r.serviceDate).toLocaleDateString() : '—'}
+                  {r.serviceDate ? new Date(r.serviceDate).toLocaleDateString(undefined, { timeZone: 'UTC' }) : '—'}
                 </td>
                 <td data-label="Driver">
                   <div className="table-stack">

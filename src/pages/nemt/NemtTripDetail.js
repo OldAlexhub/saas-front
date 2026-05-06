@@ -171,7 +171,7 @@ const NemtTripDetail = () => {
           <div className="panel-body">
             <dl className="meta-grid">
               <div><dt>Agency ref</dt><dd>{trip?.agencyTripRef || '—'}</dd></div>
-              <div><dt>Service date</dt><dd>{trip?.serviceDate ? new Date(trip.serviceDate).toLocaleDateString() : '—'}</dd></div>
+              <div><dt>Service date</dt><dd>{trip?.serviceDate ? new Date(trip.serviceDate).toLocaleDateString(undefined, { timeZone: 'UTC' }) : '—'}</dd></div>
               <div><dt>Driver</dt><dd>{trip?.driverId || 'Unassigned'}</dd></div>
               <div><dt>Run</dt><dd>{trip?.runId ? <Link to={`/nemt/runs/${trip.runId}`}>View run</Link> : '—'}</dd></div>
               <div><dt>Run sequence</dt><dd>{trip?.runSequence ?? '—'}</dd></div>

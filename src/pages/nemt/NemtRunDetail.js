@@ -265,7 +265,7 @@ const NemtRunDetail = () => {
   return (
     <AppLayout
       title={`Run ${run?.runId || id?.slice(-6) || ''}`}
-      subtitle={run?.serviceDate ? `Service date: ${new Date(run.serviceDate).toLocaleDateString()}` : 'NEMT run manifest'}
+      subtitle={run?.serviceDate ? `Service date: ${new Date(run.serviceDate).toLocaleDateString(undefined, { timeZone: 'UTC' })}` : 'NEMT run manifest'}
       actions={actions}
     >
       <div className="surface">

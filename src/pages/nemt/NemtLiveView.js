@@ -21,7 +21,7 @@ const STATUS_ORDER = ['Active', 'Acknowledged', 'Dispatched'];
 function formatDate(val) {
   if (!val) return '—';
   const d = new Date(val);
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 }
 
 function formatTime(val) {
