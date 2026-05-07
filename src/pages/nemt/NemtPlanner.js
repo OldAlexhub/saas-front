@@ -197,7 +197,7 @@ const NemtPlanner = () => {
 
         <div className="toolbar">
           <div className="search-input" style={{ width: 180 }}>
-            <span className="icon">Date</span>
+            <span className="icon">📅</span>
             <input type="date" value={serviceDate} onChange={(e) => setServiceDate(e.target.value)} />
           </div>
           <button type="button" className="btn btn-subtle" onClick={handleAutoAssign} disabled={busy === 'auto'}>
@@ -219,7 +219,7 @@ const NemtPlanner = () => {
             </div>
             <div className="panel-body">
               <div className="search-input" style={{ marginBottom: 12 }}>
-                <span className="icon">Search</span>
+                <span className="icon">🔍</span>
                 <input
                   type="search"
                   placeholder="Passenger, trip ID, address"
