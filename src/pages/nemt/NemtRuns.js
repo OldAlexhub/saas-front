@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import AppLayout from '../../components/AppLayout';
-import { listRuns } from '../../services/nemtService';
+import { autoAssignRuns, listRuns } from '../../services/nemtService';
 
 const now = new Date();
 const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -19,11 +19,15 @@ const statusBadge = (status) => {
 };
 
 const NemtRuns = () => {
+  const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('All');
   const [fromDate, setFromDate] = useState(todayIso);
   const [toDate, setToDate] = useState(todayIso);
   const [appliedDates, setAppliedDates] = useState({ from: todayIso, to: todayIso });
+  const [autoAssigning, setAutoAssigning] = useState(false);
+  const [actionMsg, setActionMsg] = useState('');
+  const [actionError, setActionError] = useState('');
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['nemt-runs', appliedDates],
@@ -35,7 +39,7 @@ const NemtRuns = () => {
       return res.data?.runs || [];
     },
   });
-  const runs = data ?? [];
+  const runs = useMemo(() => data ?? [], [data]);
 
   const applyDates = () => setAppliedDates({ from: fromDate, to: toDate });
   const clearDates = () => {
@@ -53,6 +57,33 @@ const NemtRuns = () => {
         .filter(Boolean).join(' ').toLowerCase().includes(q);
     });
   }, [runs, search, status]);
+
+  const selectedServiceDate = appliedDates.from || fromDate || todayIso;
+
+  const handleAutoAssign = async () => {
+    if (!selectedServiceDate) return;
+    const confirmed = window.confirm(
+      `Automatically assign unassigned NEMT trips for ${selectedServiceDate} to active drivers and optimize each run?`
+    );
+    if (!confirmed) return;
+    setAutoAssigning(true);
+    setActionMsg('');
+    setActionError('');
+    try {
+      const res = await autoAssignRuns({ serviceDate: selectedServiceDate, commit: true });
+      const payload = res.data || {};
+      const warningText = Array.isArray(payload.warnings) && payload.warnings.length
+        ? ` ${payload.warnings.length} warning(s) need review.`
+        : '';
+      setActionMsg(`Assigned ${payload.tripCount || 0} trip(s) into ${payload.runCount || 0} run(s).${warningText}`);
+      qc.invalidateQueries({ queryKey: ['nemt-runs'] });
+      qc.invalidateQueries({ queryKey: ['nemt-trips'] });
+    } catch (err) {
+      setActionError(err.response?.data?.message || 'Automatic assignment failed.');
+    } finally {
+      setAutoAssigning(false);
+    }
+  };
 
   const actions = (
     <Link to="/nemt/runs/new" className="btn btn-primary">
@@ -120,6 +151,9 @@ const NemtRuns = () => {
       actions={actions}
     >
       <div className="surface">
+        {actionMsg && <div className="feedback success">{actionMsg}</div>}
+        {actionError && <div className="feedback error">{actionError}</div>}
+
         <div className="toolbar">
           <div className="search-input">
             <span className="icon">🔍</span>
@@ -147,6 +181,10 @@ const NemtRuns = () => {
           <select className="filter-select" value={status} onChange={(e) => setStatus(e.target.value)}>
             {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
+
+          <button type="button" className="btn btn-subtle" onClick={handleAutoAssign} disabled={autoAssigning}>
+            {autoAssigning ? 'Assigning...' : 'Auto-assign trips'}
+          </button>
 
           <div className="summary">{filtered.length} of {runs.length} runs</div>
         </div>

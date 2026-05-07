@@ -24,6 +24,17 @@ const expiryBadge = (value) => {
   return <span className="badge badge-success">Compliant</span>;
 };
 
+const nemtSummary = (vehicle) => {
+  const caps = vehicle.nemtCapabilities || {};
+  const capacity = vehicle.nemtCapacity || {};
+  const labels = [];
+  if (caps.ambulatory !== false) labels.push('Ambulatory');
+  if (caps.wheelchair) labels.push('Wheelchair');
+  if (caps.wheelchairXL) labels.push('Wheelchair XL');
+  if (caps.stretcher) labels.push('Stretcher');
+  return { caps, capacity, labels };
+};
+
 const VehiclesView = () => {
   const { id } = useParams();
   const [vehicle, setVehicle] = useState(null);
@@ -51,6 +62,7 @@ const VehiclesView = () => {
     if (loading) return <div className="skeleton" style={{ height: '240px' }} />;
     if (error) return <div className="feedback error">{error}</div>;
     if (!vehicle) return <div className="empty-state">Vehicle not found.</div>;
+    const nemt = nemtSummary(vehicle);
 
     return (
       <div className="panel">
@@ -95,6 +107,21 @@ const VehiclesView = () => {
                   <div className="muted">{formatDate(vehicle.annualInspection)}</div>
                   <div style={{ marginTop: 8 }}>{expiryBadge(vehicle.annualInspection)}</div>
                 </dd>
+              </dl>
+            </div>
+
+            <div className="metric-card">
+              <h3>NEMT capability</h3>
+              <div className="metric-subline">{nemt.labels.length ? nemt.labels.join(' / ') : 'No NEMT capabilities set'}</div>
+              <dl className="meta-grid">
+                <dt>Ambulatory seats</dt>
+                <dd>{nemt.capacity.ambulatorySeats ?? 4}</dd>
+                <dt>Wheelchair positions</dt>
+                <dd>{nemt.capacity.wheelchairPositions ?? 0}</dd>
+                <dt>Stretcher positions</dt>
+                <dd>{nemt.capacity.stretcherPositions ?? 0}</dd>
+                <dt>Total riders/attendants</dt>
+                <dd>{nemt.capacity.maxPassengerCount ?? 4}</dd>
               </dl>
             </div>
           </div>

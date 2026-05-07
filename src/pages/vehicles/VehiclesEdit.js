@@ -13,6 +13,14 @@ const emptyForm = {
   make: '',
   model: '',
   color: '',
+  nemtAmbulatory: true,
+  nemtWheelchair: false,
+  nemtWheelchairXL: false,
+  nemtStretcher: false,
+  nemtAmbulatorySeats: '4',
+  nemtWheelchairPositions: '0',
+  nemtStretcherPositions: '0',
+  nemtMaxPassengerCount: '4',
 };
 
 const VehiclesEdit = () => {
@@ -32,9 +40,27 @@ const VehiclesEdit = () => {
         const res = await getVehicle(id);
         const data = res.data?.vehicle || res.data?.data || res.data;
         if (data && typeof data === 'object') {
+          const caps = data.nemtCapabilities || {};
+          const capacity = data.nemtCapacity || {};
           setForm({
             ...emptyForm,
-            ...data,
+            cabNumber: data.cabNumber || '',
+            vinNumber: data.vinNumber || '',
+            licPlates: data.licPlates || '',
+            regisExpiry: data.regisExpiry || '',
+            year: data.year || '',
+            annualInspection: data.annualInspection || '',
+            make: data.make || '',
+            model: data.model || '',
+            color: data.color || '',
+            nemtAmbulatory: caps.ambulatory !== false,
+            nemtWheelchair: Boolean(caps.wheelchair),
+            nemtWheelchairXL: Boolean(caps.wheelchairXL),
+            nemtStretcher: Boolean(caps.stretcher),
+            nemtAmbulatorySeats: String(capacity.ambulatorySeats ?? '4'),
+            nemtWheelchairPositions: String(capacity.wheelchairPositions ?? '0'),
+            nemtStretcherPositions: String(capacity.stretcherPositions ?? '0'),
+            nemtMaxPassengerCount: String(capacity.maxPassengerCount ?? '4'),
           });
           setInspectionUrl(data.annualInspectionFileUrl || data.annualInspectionFile || '');
         }
@@ -50,11 +76,8 @@ const VehiclesEdit = () => {
   }, [id]);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleFileChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
   const handleSubmit = async (e) => {
@@ -177,6 +200,91 @@ const VehiclesEdit = () => {
                     type="text"
                     name="color"
                     value={form.color || ''}
+                    onChange={handleChange}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="form-section">
+              <div>
+                <h3>NEMT capability</h3>
+                <p>Keep wheelchair, stretcher, and rider capacity current for trip assignment.</p>
+              </div>
+              <div className="form-grid">
+                <label>
+                  <input
+                    type="checkbox"
+                    name="nemtAmbulatory"
+                    checked={form.nemtAmbulatory}
+                    onChange={handleChange}
+                  /> Ambulatory
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    name="nemtWheelchair"
+                    checked={form.nemtWheelchair}
+                    onChange={handleChange}
+                  /> Wheelchair
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    name="nemtWheelchairXL"
+                    checked={form.nemtWheelchairXL}
+                    onChange={handleChange}
+                  /> Wheelchair XL
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    name="nemtStretcher"
+                    checked={form.nemtStretcher}
+                    onChange={handleChange}
+                  /> Stretcher
+                </label>
+                <div>
+                  <label htmlFor="nemtAmbulatorySeats">Ambulatory seats</label>
+                  <input
+                    id="nemtAmbulatorySeats"
+                    type="number"
+                    min="0"
+                    name="nemtAmbulatorySeats"
+                    value={form.nemtAmbulatorySeats}
+                    onChange={handleChange}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="nemtWheelchairPositions">Wheelchair positions</label>
+                  <input
+                    id="nemtWheelchairPositions"
+                    type="number"
+                    min="0"
+                    name="nemtWheelchairPositions"
+                    value={form.nemtWheelchairPositions}
+                    onChange={handleChange}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="nemtStretcherPositions">Stretcher positions</label>
+                  <input
+                    id="nemtStretcherPositions"
+                    type="number"
+                    min="0"
+                    name="nemtStretcherPositions"
+                    value={form.nemtStretcherPositions}
+                    onChange={handleChange}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="nemtMaxPassengerCount">Max total passengers/attendants</label>
+                  <input
+                    id="nemtMaxPassengerCount"
+                    type="number"
+                    min="1"
+                    name="nemtMaxPassengerCount"
+                    value={form.nemtMaxPassengerCount}
                     onChange={handleChange}
                   />
                 </div>

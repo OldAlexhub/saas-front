@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import AppLayout from '../../components/AppLayout';
-import { listAgencies, listTrips, importTrips } from '../../services/nemtService';
+import { listAgencies, listTrips, stageImport, commitImportBatch } from '../../services/nemtService';
 
 const REQUIRED_HEADERS = [
   { field: 'Passenger Name',        accepted: 'Passenger Name · Name · Patient Name',                    required: true  },
@@ -53,6 +53,7 @@ const NemtTrips = () => {
   const [toDate, setToDate] = useState(todayIso);
   const [appliedDates, setAppliedDates] = useState({ from: todayIso, to: todayIso });
   const [importing, setImporting] = useState(false);
+  const [committingImport, setCommittingImport] = useState(false);
   const [importMsg, setImportMsg] = useState('');
   const [importErr, setImportErr] = useState('');
 
@@ -61,6 +62,7 @@ const NemtTrips = () => {
   const [importAgencyId, setImportAgencyId] = useState('');
   const [importServiceDate, setImportServiceDate] = useState(todayIso);
   const [showHeaderRef, setShowHeaderRef] = useState(false);
+  const [stagedBatch, setStagedBatch] = useState(null);
 
   const { data: agenciesData } = useQuery({
     queryKey: ['nemt-agencies'],
@@ -82,7 +84,7 @@ const NemtTrips = () => {
       return res.data?.trips || [];
     },
   });
-  const trips = data ?? [];
+  const trips = useMemo(() => data ?? [], [data]);
 
   const applyDates = () => setAppliedDates({ from: fromDate, to: toDate });
   const clearDates = () => {
@@ -101,12 +103,16 @@ const NemtTrips = () => {
     });
   }, [trips, search, status]);
 
+  const stagedRows = stagedBatch?.rows || [];
+  const committableRows = stagedRows.filter((row) => ['valid', 'warning'].includes(row.status)).length;
+
   const openImportModal = () => {
     setImportAgencyId('');
     setImportServiceDate(todayIso);
     setImportMsg('');
     setImportErr('');
     setShowHeaderRef(false);
+    setStagedBatch(null);
     setShowImportModal(true);
   };
 
@@ -118,24 +124,45 @@ const NemtTrips = () => {
     setImporting(true);
     setImportMsg('');
     setImportErr('');
+    setStagedBatch(null);
     try {
       const fd = new FormData();
       fd.append('file', file);
       fd.append('agencyId', importAgencyId);
       fd.append('serviceDate', importServiceDate);
-      const res = await importTrips(fd);
-      const { created, skipped, errors } = res.data;
-      let msg = `Imported ${created} trip${created !== 1 ? 's' : ''}.`;
-      if (skipped) msg += ` ${skipped} row(s) skipped.`;
-      setImportMsg(msg);
-      if (errors?.length) setImportErr(errors.map((e) => (typeof e === 'string' ? e : `Row ${e.row}: ${e.message}`)).join(' · '));
-      qc.invalidateQueries({ queryKey: ['nemt-trips'] });
-      if (!errors?.length) setShowImportModal(false);
+      const res = await stageImport(fd);
+      const batch = res.data?.batch;
+      setStagedBatch(batch);
+      setImportMsg(
+        `Staged ${batch?.totalRows || 0} row(s): ${batch?.validRows || 0} valid, ${batch?.warningRows || 0} warning, ${batch?.errorRows || 0} error.`
+      );
+      if ((batch?.errorRows || 0) > 0) {
+        setImportErr('Fix or remove error rows in the source file before committing. Valid and warning rows can still be committed.');
+      }
     } catch (err) {
-      setImportErr(err.response?.data?.message || 'Import failed.');
+      setImportErr(err.response?.data?.message || 'Import staging failed.');
     } finally {
       setImporting(false);
       if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
+  const handleCommitImport = async () => {
+    if (!stagedBatch?.id) return;
+    setCommittingImport(true);
+    setImportMsg('');
+    setImportErr('');
+    try {
+      const res = await commitImportBatch(stagedBatch.id);
+      const batch = res.data?.batch;
+      setStagedBatch(batch);
+      setImportMsg(`Committed ${res.data?.created || 0} trip(s).`);
+      qc.invalidateQueries({ queryKey: ['nemt-trips'] });
+      if ((batch?.errorRows || 0) === 0) setShowImportModal(false);
+    } catch (err) {
+      setImportErr(err.response?.data?.message || 'Import commit failed.');
+    } finally {
+      setCommittingImport(false);
     }
   };
 
@@ -307,6 +334,88 @@ const NemtTrips = () => {
                 )}
               </div>
 
+              {stagedBatch && (
+                <div className="panel" style={{ margin: 0 }}>
+                  <div className="panel-header">
+                    <h3>Import preview</h3>
+                    <span className={`badge ${(stagedBatch.errorRows || 0) > 0 ? 'badge-warning' : 'badge-success'}`}>
+                      {stagedBatch.status}
+                    </span>
+                  </div>
+                  <div className="panel-body" style={{ padding: 0 }}>
+                    <div className="toolbar" style={{ padding: 12, borderBottom: '1px solid var(--surface-border)' }}>
+                      <div className="summary">
+                        {stagedBatch.validRows || 0} valid / {stagedBatch.warningRows || 0} warning / {stagedBatch.errorRows || 0} error
+                      </div>
+                      <div className="summary">{committableRows} row(s) ready to commit</div>
+                    </div>
+                    <div className="table-responsive-stack" style={{ maxHeight: 320, overflow: 'auto' }}>
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>Row</th>
+                            <th>Status</th>
+                            <th>Passenger</th>
+                            <th>Pickup time</th>
+                            <th>Pickup</th>
+                            <th>Dropoff</th>
+                            <th>Issues</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {stagedRows.slice(0, 50).map((row) => {
+                            const data = row.data || {};
+                            const issues = [...(row.errors || []), ...(row.warnings || [])];
+                            return (
+                              <tr key={row.rowNumber}>
+                                <td data-label="Row">{row.rowNumber}</td>
+                                <td data-label="Status">
+                                  <span className={`badge ${row.status === 'error' ? 'badge-warning' : 'badge-info'}`}>
+                                    {row.status}
+                                  </span>
+                                </td>
+                                <td data-label="Passenger">{data.passengerName || '-'}</td>
+                                <td data-label="Pickup time">
+                                  {data.scheduledPickupTime
+                                    ? new Date(data.scheduledPickupTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                    : '-'}
+                                </td>
+                                <td data-label="Pickup">{data.pickupAddress || '-'}</td>
+                                <td data-label="Dropoff">{data.dropoffAddress || '-'}</td>
+                                <td data-label="Issues" style={{ minWidth: 220 }}>
+                                  {issues.length ? issues.join(' | ') : '-'}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                    {stagedRows.length > 50 && (
+                      <div className="form-hint" style={{ padding: 12 }}>
+                        Showing first 50 rows. Commit will include all valid and warning rows.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {stagedBatch && stagedBatch.status === 'staged' && (
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    disabled={committingImport || committableRows === 0}
+                    onClick={handleCommitImport}
+                  >
+                    {committingImport ? 'Committing...' : `Commit ${committableRows} staged row(s)`}
+                  </button>
+                  <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
+                    Error rows will stay in the batch and will not create trips.
+                  </span>
+                </div>
+              )}
+
               <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                 <button
                   type="button"
@@ -314,7 +423,7 @@ const NemtTrips = () => {
                   disabled={importing || !importAgencyId || !importServiceDate}
                   onClick={() => fileRef.current?.click()}
                 >
-                  {importing ? 'Importing…' : 'Choose file & import'}
+                  {importing ? 'Staging...' : 'Choose file & preview'}
                 </button>
                 <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>Accepts .csv, .xlsx, .xls — max 10 MB</span>
               </div>

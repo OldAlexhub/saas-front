@@ -186,6 +186,7 @@ const navSections = [
     label: 'Reports',
     icon: icons.reports,
     items: [
+      { to: '/reports/financials', label: 'Financials', icon: icons.reports, end: true },
       { to: '/reports/builder', label: 'Report Designer', icon: icons.reports, end: true },
       { to: '/reports/receipts', label: 'Generate Receipts', icon: icons.reports, end: true },
       { to: '/reports/diagnostics', label: 'Diagnostics', icon: icons.reports, end: true },
@@ -198,6 +199,7 @@ const navSections = [
     label: 'NEMT',
     icon: icons.nemt,
     items: [
+      { to: '/nemt/planner', label: 'Planner', icon: icons.nemt, end: true },
       { to: '/nemt/trips', label: 'Trips', icon: icons.nemt },
       { to: '/nemt/trips/new', label: 'Add Trip', icon: icons.create, end: true },
       { to: '/nemt/runs', label: 'Runs', icon: icons.nemt },

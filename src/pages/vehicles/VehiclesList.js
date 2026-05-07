@@ -21,6 +21,20 @@ const expiryBadge = (value) => {
   return <span className="badge badge-success">Compliant</span>;
 };
 
+const nemtSummary = (vehicle) => {
+  const caps = vehicle.nemtCapabilities || {};
+  const capacity = vehicle.nemtCapacity || {};
+  const labels = [];
+  if (caps.ambulatory !== false) labels.push('AMB');
+  if (caps.wheelchair) labels.push('WC');
+  if (caps.wheelchairXL) labels.push('WC XL');
+  if (caps.stretcher) labels.push('STR');
+  return {
+    labels: labels.length ? labels.join(' / ') : 'Not set',
+    capacity: `${capacity.maxPassengerCount ?? 4} riders, ${capacity.wheelchairPositions ?? 0} WC, ${capacity.stretcherPositions ?? 0} STR`,
+  };
+};
+
 const VehiclesList = () => {
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -90,6 +104,7 @@ const VehiclesList = () => {
             <th>Cab</th>
             <th>Registration</th>
             <th>Make & model</th>
+            <th>NEMT</th>
             <th>Identifiers</th>
             <th>Actions</th>
           </tr>
@@ -113,6 +128,12 @@ const VehiclesList = () => {
                 <div className="table-stack">
                   <span className="primary">{vehicle.make || '—'} {vehicle.model || ''}</span>
                   <span className="secondary">Annual inspection: {formatDate(vehicle.annualInspection)} {' '}{expiryBadge(vehicle.annualInspection)}</span>
+                </div>
+              </td>
+              <td data-label="NEMT">
+                <div className="table-stack">
+                  <span className="primary">{nemtSummary(vehicle).labels}</span>
+                  <span className="secondary">{nemtSummary(vehicle).capacity}</span>
                 </div>
               </td>
               <td data-label="Identifiers">

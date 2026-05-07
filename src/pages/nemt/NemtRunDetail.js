@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import AppLayout from '../../components/AppLayout';
 import {
   getRun, updateRun, reorderRun, addTripToRun, removeTripFromRun,
-  optimizeRun, dispatchRun, cancelRun, listTrips,
+  previewRunOptimization, applyRunOptimization, dispatchRun, cancelRun, listTrips,
 } from '../../services/nemtService';
 import { listActives } from '../../services/activeService';
 
@@ -48,6 +48,7 @@ const NemtRunDetail = () => {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [optimizationProposal, setOptimizationProposal] = useState(null);
 
   const loadRun = useCallback(async () => {
     try {
@@ -55,6 +56,7 @@ const NemtRunDetail = () => {
       const r = res.data?.run || res.data;
       setRun(r);
       setTrips(r.trips || []);
+      setOptimizationProposal(null);
       setMetaForm({
         driverId: r.driverId || '',
         cabNumber: r.cabNumber ? String(r.cabNumber) : '',
@@ -136,6 +138,7 @@ const NemtRunDetail = () => {
     if (swapIndex < 0 || swapIndex >= newTrips.length) return;
     [newTrips[index], newTrips[swapIndex]] = [newTrips[swapIndex], newTrips[index]];
     setTrips(newTrips);
+    setOptimizationProposal(null);
     setSaving(true);
     setMessage('');
     setError('');
@@ -155,6 +158,7 @@ const NemtRunDetail = () => {
     setSaving(true);
     setMessage('');
     setError('');
+    setOptimizationProposal(null);
     try {
       await removeTripFromRun(id, tripId);
       setTrips((prev) => prev.filter((t) => t.id !== tripId));
@@ -170,6 +174,7 @@ const NemtRunDetail = () => {
     setAddingTrip(tripId);
     setMessage('');
     setError('');
+    setOptimizationProposal(null);
     try {
       const res = await addTripToRun(id, { tripId });
       const updatedRun = res.data?.run;
@@ -189,12 +194,31 @@ const NemtRunDetail = () => {
   };
 
   const handleOptimize = async () => {
-    if (!window.confirm('Re-optimize the trip order? Locked (in-progress) trips will not move.')) return;
+    setSaving(true);
+    setMessage('');
+    setError('');
+    setOptimizationProposal(null);
+    try {
+      const res = await previewRunOptimization(id);
+      setOptimizationProposal(res.data?.proposal || null);
+      const changed = res.data?.proposal?.changedCount ?? 0;
+      const warnings = Array.isArray(res.data?.proposal?.warnings) ? res.data.proposal.warnings.length : 0;
+      setMessage(`Optimization preview ready. ${changed} trip(s) would move.${warnings ? ` ${warnings} warning(s) need review.` : ''}`);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Optimization preview failed.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleApplyOptimization = async () => {
+    if (!optimizationProposal?.orderedIds?.length) return;
+    if (!window.confirm('Apply this proposed order and notify the driver if the run is already dispatched?')) return;
     setSaving(true);
     setMessage('');
     setError('');
     try {
-      const res = await optimizeRun(id);
+      const res = await applyRunOptimization(id, { orderedIds: optimizationProposal.orderedIds });
       const updatedRun = res.data?.run;
       if (updatedRun) {
         setRun(updatedRun);
@@ -202,9 +226,11 @@ const NemtRunDetail = () => {
       } else {
         await loadRun();
       }
-      setMessage(`Optimized. ${res.data?.optimizedCount ?? ''} trips resequenced.`);
+      const warnings = Array.isArray(res.data?.warnings) ? res.data.warnings.length : 0;
+      setOptimizationProposal(null);
+      setMessage(`Optimization applied. ${res.data?.optimizedCount ?? 0} trip(s) resequenced.${warnings ? ` ${warnings} warning(s) need review.` : ''}`);
     } catch (err) {
-      setError(err.response?.data?.message || 'Optimization failed.');
+      setError(err.response?.data?.message || 'Optimization apply failed.');
     } finally {
       setSaving(false);
     }
@@ -233,7 +259,7 @@ const NemtRunDetail = () => {
     setMessage('');
     setError('');
     try {
-      const res = await cancelRun(id, { reason: cancelReason || undefined });
+      const res = await cancelRun(id, { cancelReason: cancelReason || undefined });
       const updatedRun = res.data?.run;
       setRun((prev) => ({ ...prev, ...(updatedRun || { status: 'Cancelled' }) }));
       await loadRun();
@@ -292,7 +318,7 @@ const NemtRunDetail = () => {
             <div className="panel-footer" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {trips.length > 1 && (
                 <button type="button" className="btn btn-subtle" onClick={handleOptimize} disabled={saving}>
-                  Optimize order
+                  Preview optimized order
                 </button>
               )}
               {!showAddTrip && (
@@ -406,6 +432,65 @@ const NemtRunDetail = () => {
 
           {/* Right column: meta + add-trip + controls */}
           <div>
+            {optimizationProposal && (
+              <section className="panel" style={{ marginBottom: 24 }}>
+                <div className="panel-header">
+                  <h3>Optimization proposal</h3>
+                  <span className="badge badge-info">
+                    {optimizationProposal.changedCount || 0} move(s)
+                  </span>
+                </div>
+                <div className="panel-body">
+                  {optimizationProposal.requiresApproval && (
+                    <div className="feedback warning" style={{ marginBottom: 12 }}>
+                      This manifest has already been dispatched. Review before applying because the driver app will be updated.
+                    </div>
+                  )}
+                  {optimizationProposal.warnings?.length > 0 && (
+                    <div className="feedback error" style={{ marginBottom: 12 }}>
+                      {optimizationProposal.warnings.join(' ')}
+                    </div>
+                  )}
+                  <table className="data-table">
+                    <thead>
+                      <tr><th>#</th><th>Trip</th><th>Pickup</th></tr>
+                    </thead>
+                    <tbody>
+                      {(optimizationProposal.proposedTrips || []).map((t, idx) => (
+                        <tr key={t.id}>
+                          <td>{idx + 1}</td>
+                          <td>
+                            <div className="table-stack">
+                              <span className="primary">#{t.tripId || t.id?.slice(-6)}</span>
+                              <span className="secondary">{t.passengerName || '-'}</span>
+                            </div>
+                          </td>
+                          <td>
+                            <div className="table-stack">
+                              <span className="primary">
+                                {t.scheduledPickupTime
+                                  ? new Date(t.scheduledPickupTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                  : '-'}
+                              </span>
+                              <span className="secondary">{t.pickupAddress || '-'}</span>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="panel-footer" style={{ display: 'flex', gap: 8 }}>
+                  <button type="button" className="btn btn-primary" onClick={handleApplyOptimization} disabled={saving}>
+                    Apply proposal
+                  </button>
+                  <button type="button" className="btn btn-ghost" onClick={() => setOptimizationProposal(null)} disabled={saving}>
+                    Dismiss
+                  </button>
+                </div>
+              </section>
+            )}
+
             {/* Run meta edit */}
             <section className="panel" style={{ marginBottom: 24 }}>
               <form onSubmit={handleSaveMeta}>

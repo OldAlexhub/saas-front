@@ -5,6 +5,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 // Accounting pages removed
 import AccidentReports from './pages/accidents/AccidentReports';
 import NemtTrips from './pages/nemt/NemtTrips';
+import NemtPlanner from './pages/nemt/NemtPlanner';
 import NemtTripCreate from './pages/nemt/NemtTripCreate';
 import NemtTripDetail from './pages/nemt/NemtTripDetail';
 import NemtRuns from './pages/nemt/NemtRuns';
@@ -31,6 +32,7 @@ import DriversView from './pages/drivers/DriversView';
 import Fares from './pages/Fares';
 import Login from './pages/Login';
 import ReportsDiagnostics from './pages/reports/Diagnostics';
+import FinancialReport from './pages/reports/FinancialReport';
 import ReceiptGenerator from './pages/reports/ReceiptGenerator';
 import ReportsBuilder from './pages/reports/ReportsBuilder';
 import AppSettings from './pages/settings/AppSettings';
@@ -132,6 +134,9 @@ function App() {
         path="/reports/diagnostics"
         element={token ? <ReportsDiagnostics /> : <Navigate to="/login" replace />} />
       <Route
+        path="/reports/financials"
+        element={token ? <FinancialReport /> : <Navigate to="/login" replace />} />
+      <Route
         path="/settings/company"
         element={token ? <CompanySettings /> : <Navigate to="/login" replace />} />
       {/* Invoicing settings page removed */}
@@ -145,6 +150,7 @@ function App() {
         path="/accidents"
         element={token ? <AccidentReports /> : <Navigate to="/login" replace />} />
       {/* NEMT routes */}
+      <Route path="/nemt/planner" element={token ? <NemtPlanner /> : <Navigate to="/login" replace />} />
       <Route path="/nemt/trips" element={token ? <NemtTrips /> : <Navigate to="/login" replace />} />
       <Route path="/nemt/trips/new" element={token ? <NemtTripCreate /> : <Navigate to="/login" replace />} />
       <Route path="/nemt/trips/:id" element={token ? <NemtTripDetail /> : <Navigate to="/login" replace />} />

@@ -243,6 +243,8 @@ const PayTab = () => {
   const [updateForm, setUpdateForm] = useState({});
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [payoutModal, setPayoutModal] = useState(null); // { batchId, driverName, totalAmount }
+  const [payoutForm, setPayoutForm] = useState({ paymentMethod: 'check', referenceNumber: '', paidAt: new Date().toISOString().slice(0, 10), notes: '' });
 
   const { data: unpaid = [], isLoading: unpaidLoading } = useQuery({
     queryKey: ['nemt-unpaid', createForm.driverId],
@@ -306,6 +308,36 @@ const PayTab = () => {
     }
   };
 
+  const openPayoutModal = (b) => {
+    setPayoutModal({ batchId: b._id, driverName: b.driverName || b.driverId, totalAmount: b.totalAmount });
+    setPayoutForm({ paymentMethod: 'check', referenceNumber: '', paidAt: new Date().toISOString().slice(0, 10), notes: '' });
+  };
+
+  const handleConfirmPayout = async (e) => {
+    e.preventDefault();
+    if (!payoutModal) return;
+    setSaving(true);
+    setMessage('');
+    setError('');
+    try {
+      await updatePayBatch(payoutModal.batchId, {
+        status: 'paid',
+        paidAt: payoutForm.paidAt,
+        paymentMethod: payoutForm.paymentMethod,
+        referenceNumber: payoutForm.referenceNumber || undefined,
+        notes: payoutForm.notes || undefined,
+      });
+      qc.invalidateQueries({ queryKey: ['nemt-pay-batches'] });
+      setPayoutModal(null);
+      setExpandedId(null);
+      setMessage(`Payout recorded for ${payoutModal.driverName}.`);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to record payout.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const totalUnpaid = unpaid
     .filter((t) => !createForm.driverId || t.driverId === createForm.driverId)
     .reduce((s, t) => s + (t.driverPay || 0), 0);
@@ -314,6 +346,53 @@ const PayTab = () => {
     <div>
       {message && <div className="feedback success">{message}</div>}
       {error && <div className="feedback error">{error}</div>}
+
+      {/* Payout confirmation modal */}
+      {payoutModal && (
+        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="panel" style={{ maxWidth: 460, width: '100%', margin: '0 16px' }}>
+            <div className="panel-header">
+              <h3>Record payout — {payoutModal.driverName}</h3>
+              <p style={{ color: 'var(--text-secondary)', marginTop: 4 }}>Amount: <strong>{fmt(payoutModal.totalAmount)}</strong></p>
+            </div>
+            <form onSubmit={handleConfirmPayout}>
+              <div className="panel-body">
+                <div className="form-grid">
+                  <div>
+                    <label htmlFor="po-method">Payment method</label>
+                    <select id="po-method" value={payoutForm.paymentMethod} onChange={(e) => setPayoutForm((p) => ({ ...p, paymentMethod: e.target.value }))} required>
+                      <option value="check">Check</option>
+                      <option value="ach">ACH / Direct deposit</option>
+                      <option value="cash">Cash</option>
+                      <option value="zelle">Zelle</option>
+                      <option value="venmo">Venmo</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="po-date">Payment date</label>
+                    <input id="po-date" type="date" value={payoutForm.paidAt} onChange={(e) => setPayoutForm((p) => ({ ...p, paidAt: e.target.value }))} required />
+                  </div>
+                  <div className="full-width">
+                    <label htmlFor="po-ref">Reference / Check # <span style={{ color: 'var(--text-secondary)' }}>(optional)</span></label>
+                    <input id="po-ref" type="text" value={payoutForm.referenceNumber} onChange={(e) => setPayoutForm((p) => ({ ...p, referenceNumber: e.target.value }))} placeholder="e.g. 1042 or ACH-20250506" />
+                  </div>
+                  <div className="full-width">
+                    <label htmlFor="po-notes">Notes <span style={{ color: 'var(--text-secondary)' }}>(optional)</span></label>
+                    <textarea id="po-notes" rows={2} value={payoutForm.notes} onChange={(e) => setPayoutForm((p) => ({ ...p, notes: e.target.value }))} />
+                  </div>
+                </div>
+              </div>
+              <div className="panel-footer" style={{ display: 'flex', gap: 8 }}>
+                <button type="submit" className="btn btn-primary" disabled={saving}>
+                  {saving ? 'Saving…' : `Confirm payout — ${fmt(payoutModal.totalAmount)}`}
+                </button>
+                <button type="button" className="btn btn-ghost" onClick={() => setPayoutModal(null)}>Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       <div className="toolbar" style={{ marginBottom: 16 }}>
         <div className="summary">{batches.length} pay batch{batches.length !== 1 ? 'es' : ''}</div>
@@ -383,7 +462,12 @@ const PayTab = () => {
                     <td data-label="Trips">{b.tripCount ?? '—'}</td>
                     <td data-label="Total">{fmt(b.totalAmount)}</td>
                     <td data-label="Status"><span className={`badge ${statusBadge(b.status)}`}>{b.status}</span></td>
-                    <td>
+                    <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {['draft', 'sent'].includes(b.status) && (
+                        <button type="button" className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '4px 10px' }} onClick={() => openPayoutModal(b)}>
+                          Record payout
+                        </button>
+                      )}
                       <button type="button" className="pill-button" onClick={() => expandBatch(b)}>
                         {expandedId === b._id ? 'Close' : 'Manage'}
                       </button>
@@ -393,6 +477,13 @@ const PayTab = () => {
                     <tr key={`${b._id}-expand`}>
                       <td colSpan={6} style={{ background: 'var(--surface-highlight)', padding: '16px 24px' }}>
                         <div className="form-grid" style={{ maxWidth: 480 }}>
+                          {b.paymentMethod && (
+                            <div className="full-width" style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+                              Paid via <strong>{b.paymentMethod}</strong>
+                              {b.referenceNumber ? ` · Ref: ${b.referenceNumber}` : ''}
+                              {b.paidAt ? ` · ${new Date(b.paidAt).toLocaleDateString()}` : ''}
+                            </div>
+                          )}
                           <div>
                             <label htmlFor={`ps-${b._id}`}>Status</label>
                             <select id={`ps-${b._id}`} value={updateForm.status} onChange={(e) => setUpdateForm((p) => ({ ...p, status: e.target.value }))}>

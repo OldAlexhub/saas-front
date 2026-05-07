@@ -305,9 +305,22 @@ const BookingDetail = () => {
       <div className="panel" style={{ marginBottom: '24px' }}>
         <div className="panel-header">
           <h3>Booking overview</h3>
-          <span className={`badge ${booking.status === 'Completed' ? 'badge-success' : booking.status === 'Cancelled' ? 'badge-warning' : 'badge-info'}`}>
-            {statusLabel}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span className={`badge ${booking.status === 'Completed' ? 'badge-success' : booking.status === 'Cancelled' ? 'badge-warning' : 'badge-info'}`}>
+              {statusLabel}
+            </span>
+            {booking.status === 'Completed' && (
+              <a
+                href={`${process.env.REACT_APP_API_BASE_URL || '/api/v1'}/bookings/${booking._id}/receipt`}
+                target="_blank"
+                rel="noreferrer"
+                className="btn btn-ghost"
+                style={{ fontSize: '0.8rem', padding: '4px 10px' }}
+              >
+                Download receipt
+              </a>
+            )}
+          </div>
         </div>
         <div className="panel-body">
           <dl className="meta-grid">

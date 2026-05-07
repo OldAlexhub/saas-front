@@ -46,7 +46,7 @@ const NemtTripDetail = () => {
         setForm({
           passengerName: t.passengerName || '',
           passengerPhone: t.passengerPhone || '',
-          mobilityType: t.mobilityType || 'Ambulatory',
+          mobilityType: t.mobilityType || 'ambulatory',
           passengerCount: t.passengerCount ?? 1,
           attendantCount: t.attendantCount ?? 0,
           specialInstructions: t.specialInstructions || '',
@@ -130,7 +130,7 @@ const NemtTripDetail = () => {
     setMessage('');
     setError('');
     try {
-      const res = await markTripNoShow(id, { reason: noShowReason || undefined });
+      const res = await markTripNoShow(id, { noShowReason: noShowReason || undefined });
       setTrip((prev) => ({ ...prev, ...(res.data?.trip || { status: 'NoShow' }) }));
       setMessage('Trip marked no-show.');
     } catch (err) {

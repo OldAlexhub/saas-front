@@ -15,6 +15,12 @@ export const importTrips = (formData) =>
   API.post('/nemt/trips/import', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
+export const stageImport = (formData) =>
+  API.post('/nemt/imports/stage', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+export const getImportBatch = (id) => API.get(`/nemt/imports/${id}`);
+export const commitImportBatch = (id) => API.post(`/nemt/imports/${id}/commit`);
 export const getTrip = (id) => API.get(`/nemt/trips/${id}`);
 export const updateTrip = (id, data) => API.patch(`/nemt/trips/${id}`, data);
 export const cancelTrip = (id, data) => API.post(`/nemt/trips/${id}/cancel`, data);
@@ -22,6 +28,7 @@ export const markTripNoShow = (id, data) => API.post(`/nemt/trips/${id}/no-show`
 
 // Runs
 export const listRuns = (params) => API.get('/nemt/runs', { params });
+export const autoAssignRuns = (data) => API.post('/nemt/runs/auto-assign', data);
 export const createRun = (data) => API.post('/nemt/runs', data);
 export const getRun = (id) => API.get(`/nemt/runs/${id}`);
 export const updateRun = (id, data) => API.patch(`/nemt/runs/${id}`, data);
@@ -30,6 +37,8 @@ export const addTripToRun = (id, data) => API.post(`/nemt/runs/${id}/trips`, dat
 export const removeTripFromRun = (runId, tripId) =>
   API.delete(`/nemt/runs/${runId}/trips/${tripId}`);
 export const optimizeRun = (id) => API.post(`/nemt/runs/${id}/optimize`);
+export const previewRunOptimization = (id) => API.post(`/nemt/runs/${id}/reoptimize/preview`);
+export const applyRunOptimization = (id, data) => API.post(`/nemt/runs/${id}/reoptimize/apply`, data);
 export const dispatchRun = (id) => API.post(`/nemt/runs/${id}/dispatch`);
 export const cancelRun = (id, data) => API.post(`/nemt/runs/${id}/cancel`, data);
 
