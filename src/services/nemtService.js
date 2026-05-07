@@ -20,7 +20,11 @@ export const stageImport = (formData) =>
     headers: { 'Content-Type': 'multipart/form-data' },
   });
 export const getImportBatch = (id) => API.get(`/nemt/imports/${id}`);
-export const commitImportBatch = (id) => API.post(`/nemt/imports/${id}/commit`);
+export const commitImportBatch = (id, data) => API.post(`/nemt/imports/${id}/commit`, data);
+export const correctImportRow = (id, rowNumber, data) =>
+  API.patch(`/nemt/imports/${id}/rows/${rowNumber}`, data);
+export const cancelImportBatch = (id, data) => API.post(`/nemt/imports/${id}/cancel`, data);
+export const rollbackImportBatch = (id, data) => API.post(`/nemt/imports/${id}/rollback`, data);
 export const getTrip = (id) => API.get(`/nemt/trips/${id}`);
 export const updateTrip = (id, data) => API.patch(`/nemt/trips/${id}`, data);
 export const cancelTrip = (id, data) => API.post(`/nemt/trips/${id}/cancel`, data);
@@ -69,3 +73,5 @@ export const getNemtAgencyBillingReport = (params) => API.get('/nemt/reports/age
 export const getNemtRunsReport = (params) => API.get('/nemt/reports/runs', { params });
 export const getNemtCancellationsReport = (params) => API.get('/nemt/reports/cancellations', { params });
 export const getNemtLiveRuns = () => API.get('/nemt/reports/live-runs');
+export const getNemtImportQualityReport = (params) => API.get('/nemt/reports/import-quality', { params });
+export const getNemtProofOfServiceReport = (params) => API.get('/nemt/reports/proof-of-service', { params });

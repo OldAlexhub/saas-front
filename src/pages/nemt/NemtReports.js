@@ -7,6 +7,8 @@ import {
   getNemtAgencyBillingReport,
   getNemtRunsReport,
   getNemtCancellationsReport,
+  getNemtImportQualityReport,
+  getNemtProofOfServiceReport,
 } from '../../services/nemtService';
 
 const now = new Date();
@@ -28,6 +30,8 @@ const TABS = [
   { key: 'billing', label: 'Agency Billing' },
   { key: 'runs', label: 'Runs' },
   { key: 'cancellations', label: 'Cancellations' },
+  { key: 'import_quality', label: 'Import Quality' },
+  { key: 'proof_of_service', label: 'Proof of Service' },
 ];
 
 const OTP_COLORS = {
@@ -685,9 +689,182 @@ const NemtReports = () => {
         {tab === 'billing' && <AgencyBillingTab from={appliedFrom} to={appliedTo} />}
         {tab === 'runs' && <RunsTab from={appliedFrom} to={appliedTo} />}
         {tab === 'cancellations' && <CancellationsTab from={appliedFrom} to={appliedTo} />}
+        {tab === 'import_quality' && <ImportQualityTab from={appliedFrom} to={appliedTo} />}
+        {tab === 'proof_of_service' && <ProofOfServiceTab from={appliedFrom} to={appliedTo} />}
       </div>
     </AppLayout>
   );
 };
 
 export default NemtReports;
+
+// --- Import Quality Tab ---
+function ImportQualityTab({ from, to }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const run = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await getNemtImportQualityReport({ from, to });
+      setData(res.data);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to run report.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="surface">
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+        <button className="btn btn-primary" onClick={run} disabled={loading}>
+          {loading ? 'Loading…' : 'Run report'}
+        </button>
+      </div>
+      {error && <div className="feedback error">{error}</div>}
+      {data && (
+        <>
+          <div className="stats-row" style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 20 }}>
+            {[
+              ['Total batches', data.totals.totalBatches],
+              ['Committed', data.totals.committed],
+              ['Partial', data.totals.partiallyCommitted],
+              ['Cancelled', data.totals.cancelled],
+              ['Total rows', data.totals.totalRows],
+              ['Valid rows', data.totals.validRows],
+              ['Warning rows', data.totals.warningRows],
+              ['Error rows', data.totals.errorRows],
+              ['Imported', data.totals.importedRows],
+              ['Skipped', data.totals.skippedRows],
+            ].map(([label, val]) => (
+              <div key={label} className="stat-chip" style={{ minWidth: 100, padding: '8px 14px', background: 'var(--surface-alt)', borderRadius: 8 }}>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>{label}</div>
+                <div style={{ fontSize: 20, fontWeight: 700 }}>{val ?? '—'}</div>
+              </div>
+            ))}
+          </div>
+          <table className="table" style={{ width: '100%', fontSize: 13 }}>
+            <thead>
+              <tr>
+                <th>Batch ID</th><th>Agency</th><th>Service date</th><th>Status</th>
+                <th>File</th><th>Rows</th><th>Valid</th><th>Warn</th><th>Err</th>
+                <th>Imported</th><th>Quality %</th><th>Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.batches.map((b) => (
+                <tr key={b.id}>
+                  <td style={{ fontFamily: 'monospace', fontSize: 11 }}>{b.batchId}</td>
+                  <td>{b.agencyId}</td>
+                  <td>{b.serviceDate || '—'}</td>
+                  <td>
+                    <span style={{
+                      padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600,
+                      background: b.status === 'committed' ? '#4ade8033' : b.status === 'cancelled' ? '#f8717133' : '#facc1533',
+                      color: b.status === 'committed' ? '#4ade80' : b.status === 'cancelled' ? '#f87171' : '#facc15',
+                    }}>{b.status}</span>
+                  </td>
+                  <td style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.sourceFileName || '—'}</td>
+                  <td>{b.totalRows}</td>
+                  <td style={{ color: '#4ade80' }}>{b.validRows}</td>
+                  <td style={{ color: '#facc15' }}>{b.warningRows}</td>
+                  <td style={{ color: '#f87171' }}>{b.errorRows}</td>
+                  <td>{b.importedRows}</td>
+                  <td>{b.qualityPct != null ? `${b.qualityPct}%` : '—'}</td>
+                  <td style={{ fontSize: 11 }}>{b.createdAt ? new Date(b.createdAt).toLocaleDateString() : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+    </div>
+  );
+}
+
+// --- Proof of Service Tab ---
+function ProofOfServiceTab({ from, to }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const run = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await getNemtProofOfServiceReport({ from, to });
+      setData(res.data);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to run report.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="surface">
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+        <button className="btn btn-primary" onClick={run} disabled={loading}>
+          {loading ? 'Loading…' : 'Run report'}
+        </button>
+      </div>
+      {error && <div className="feedback error">{error}</div>}
+      {data && (
+        <>
+          <div className="stats-row" style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 20 }}>
+            {[
+              ['Total trips', data.totals.total],
+              ['Has pickup GPS', data.totals.hasPickupGps],
+              ['Has dropoff GPS', data.totals.hasDropoffGps],
+              ['Has no-show GPS', data.totals.hasNoShowGps],
+              ['Has driver note', data.totals.hasDriverNote],
+              ['Flagged issues', data.totals.hasFlaggedIssue],
+              ['Missing pickup GPS', data.totals.missingPickupGps],
+              ['Missing dropoff GPS', data.totals.missingDropoffGps],
+            ].map(([label, val]) => (
+              <div key={label} className="stat-chip" style={{ minWidth: 120, padding: '8px 14px', background: 'var(--surface-alt)', borderRadius: 8 }}>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>{label}</div>
+                <div style={{ fontSize: 20, fontWeight: 700 }}>{val ?? '—'}</div>
+              </div>
+            ))}
+          </div>
+          <table className="table" style={{ width: '100%', fontSize: 13 }}>
+            <thead>
+              <tr>
+                <th>Trip #</th><th>Date</th><th>Passenger</th><th>Status</th><th>Driver</th>
+                <th>Pickup GPS</th><th>Dropoff GPS</th><th>No-show GPS</th><th>Note</th><th>Flagged</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.trips.map((t) => (
+                <tr key={t.tripId} style={(!t.hasPickupGps && t.status === 'Completed') ? { background: '#f8717111' } : undefined}>
+                  <td>{t.tripId}</td>
+                  <td>{t.serviceDate || '—'}</td>
+                  <td>{t.passengerName}</td>
+                  <td>{t.status}</td>
+                  <td>{t.driverId || '—'}</td>
+                  <td style={{ color: t.hasPickupGps ? '#4ade80' : '#f87171' }}>{t.hasPickupGps ? 'Yes' : 'Missing'}</td>
+                  <td style={{ color: t.hasDropoffGps ? '#4ade80' : t.status === 'Completed' ? '#f87171' : '#94a3b8' }}>
+                    {t.status === 'Completed' ? (t.hasDropoffGps ? 'Yes' : 'Missing') : '—'}
+                  </td>
+                  <td style={{ color: t.hasNoShowGps ? '#4ade80' : '#94a3b8' }}>
+                    {t.status === 'NoShow' ? (t.hasNoShowGps ? 'Yes' : '—') : '—'}
+                  </td>
+                  <td style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {t.driverNote || '—'}
+                  </td>
+                  <td style={{ color: t.hasFlaggedIssue ? '#f87171' : undefined }}>
+                    {t.hasFlaggedIssue ? 'Yes' : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+    </div>
+  );
+}

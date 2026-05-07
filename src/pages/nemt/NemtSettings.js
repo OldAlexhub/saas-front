@@ -18,6 +18,15 @@ const DEFAULT_FORM = {
   defaultPayRatePerMile: 0,
   defaultPayPercentage: 0,
   showDriverFinance: true,
+  onlineDriversOnly: true,
+  blockDispatchToOfflineDrivers: false,
+  requireCabBeforeDispatch: false,
+  avgMphForOptimization: 25,
+  defaultMaxTripsPerRun: 12,
+  serviceTimeAmbulatory: 3,
+  serviceTimeWheelchair: 8,
+  serviceTimeWheelchairXl: 10,
+  serviceTimeStretcher: 12,
 };
 
 const NemtSettings = () => {
@@ -31,6 +40,7 @@ const NemtSettings = () => {
     getNemtSettings()
       .then((res) => {
         const s = res.data?.settings || res.data || {};
+        const stm = s.serviceTimeByMobility || {};
         setForm({
           otpOnTimeMaxMinutes:               s.otpOnTimeMaxMinutes               ?? DEFAULT_FORM.otpOnTimeMaxMinutes,
           otpLateMaxMinutes:                 s.otpLateMaxMinutes                 ?? DEFAULT_FORM.otpLateMaxMinutes,
@@ -47,6 +57,15 @@ const NemtSettings = () => {
           defaultPayRatePerMile:             s.defaultPayRatePerMile             ?? DEFAULT_FORM.defaultPayRatePerMile,
           defaultPayPercentage:              s.defaultPayPercentage              ?? DEFAULT_FORM.defaultPayPercentage,
           showDriverFinance:                 s.showDriverFinance                 ?? DEFAULT_FORM.showDriverFinance,
+          onlineDriversOnly:                 s.onlineDriversOnly                 ?? DEFAULT_FORM.onlineDriversOnly,
+          blockDispatchToOfflineDrivers:     s.blockDispatchToOfflineDrivers     ?? DEFAULT_FORM.blockDispatchToOfflineDrivers,
+          requireCabBeforeDispatch:          s.requireCabBeforeDispatch          ?? DEFAULT_FORM.requireCabBeforeDispatch,
+          avgMphForOptimization:             s.avgMphForOptimization             ?? DEFAULT_FORM.avgMphForOptimization,
+          defaultMaxTripsPerRun:             s.defaultMaxTripsPerRun             ?? DEFAULT_FORM.defaultMaxTripsPerRun,
+          serviceTimeAmbulatory:             stm.ambulatory                      ?? DEFAULT_FORM.serviceTimeAmbulatory,
+          serviceTimeWheelchair:             stm.wheelchair                      ?? DEFAULT_FORM.serviceTimeWheelchair,
+          serviceTimeWheelchairXl:           stm.wheelchair_xl                   ?? DEFAULT_FORM.serviceTimeWheelchairXl,
+          serviceTimeStretcher:              stm.stretcher                       ?? DEFAULT_FORM.serviceTimeStretcher,
         });
       })
       .catch((err) => setError(err.response?.data?.message || 'Failed to load settings.'))
@@ -80,6 +99,17 @@ const NemtSettings = () => {
         defaultPayRatePerMile:            Number(form.defaultPayRatePerMile),
         defaultPayPercentage:             Number(form.defaultPayPercentage),
         showDriverFinance:                form.showDriverFinance,
+        onlineDriversOnly:                form.onlineDriversOnly,
+        blockDispatchToOfflineDrivers:    form.blockDispatchToOfflineDrivers,
+        requireCabBeforeDispatch:         form.requireCabBeforeDispatch,
+        avgMphForOptimization:            Number(form.avgMphForOptimization),
+        defaultMaxTripsPerRun:            Number(form.defaultMaxTripsPerRun),
+        serviceTimeByMobility: {
+          ambulatory:    Number(form.serviceTimeAmbulatory),
+          wheelchair:    Number(form.serviceTimeWheelchair),
+          wheelchair_xl: Number(form.serviceTimeWheelchairXl),
+          stretcher:     Number(form.serviceTimeStretcher),
+        },
       };
       await updateNemtSettings(payload);
       setMessage('Settings saved.');
@@ -315,6 +345,89 @@ const NemtSettings = () => {
                     </div>
                   </div>
                 )}
+              </div>
+            </section>
+
+            {/* Operational controls */}
+            <section className="panel" style={{ marginBottom: 24 }}>
+              <div className="panel-header"><h3>Operational controls</h3></div>
+              <div className="panel-body">
+                <div className="form-grid" style={{ marginBottom: 16 }}>
+                  <div>
+                    <label htmlFor="avgMphForOptimization">Average MPH (for travel-time estimates)</label>
+                    <input
+                      id="avgMphForOptimization"
+                      type="number" min="5" max="120"
+                      value={form.avgMphForOptimization}
+                      onChange={set('avgMphForOptimization')}
+                    />
+                    <small className="text-muted">Used to estimate whether trips fit in a run's window.</small>
+                  </div>
+                  <div>
+                    <label htmlFor="defaultMaxTripsPerRun">Default max trips per run</label>
+                    <input
+                      id="defaultMaxTripsPerRun"
+                      type="number" min="1" max="40"
+                      value={form.defaultMaxTripsPerRun}
+                      onChange={set('defaultMaxTripsPerRun')}
+                    />
+                    <small className="text-muted">Auto-assign will not exceed this per driver per day.</small>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={form.onlineDriversOnly}
+                      onChange={set('onlineDriversOnly')}
+                    />
+                    Auto-assign only to drivers who are currently online
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={form.blockDispatchToOfflineDrivers}
+                      onChange={set('blockDispatchToOfflineDrivers')}
+                    />
+                    Block dispatching runs to offline drivers
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={form.requireCabBeforeDispatch}
+                      onChange={set('requireCabBeforeDispatch')}
+                    />
+                    Require a cab number before a run can be dispatched
+                  </label>
+                </div>
+              </div>
+            </section>
+
+            {/* Service time by mobility type */}
+            <section className="panel" style={{ marginBottom: 24 }}>
+              <div className="panel-header"><h3>Service time by mobility type (minutes)</h3></div>
+              <div className="panel-body">
+                <p className="text-muted" style={{ marginBottom: 12, fontSize: 13 }}>
+                  Time allocated at each stop based on the passenger's mobility needs. Used for scheduling estimates.
+                </p>
+                <div className="form-grid">
+                  {[
+                    ['serviceTimeAmbulatory', 'Ambulatory'],
+                    ['serviceTimeWheelchair', 'Wheelchair'],
+                    ['serviceTimeWheelchairXl', 'Wheelchair XL'],
+                    ['serviceTimeStretcher', 'Stretcher'],
+                  ].map(([field, label]) => (
+                    <div key={field}>
+                      <label htmlFor={field}>{label}</label>
+                      <input
+                        id={field}
+                        type="number" min="0"
+                        value={form[field]}
+                        onChange={set(field)}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
             </section>
 
